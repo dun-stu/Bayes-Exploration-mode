@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-No app code written. All specification work complete for Parts 1, 2, 3, and 5. Part 4 not yet specified. Tech stack decided.
+Layer 0 (scaffolding) complete. Project initialized with Vite + React + TypeScript. Shared types, state architecture, colour scheme, and KaTeX integration in place. Ready for Layer 1 (data foundation).
 
 ---
 
@@ -38,14 +38,28 @@ Components are built with only the API surface that the current layer's consumer
 
 ### Layer 0 — Scaffolding
 
-**0.1: Project setup and shared foundations**
-- Vite + React project initialisation, folder structure
-- Shared TypeScript types: data package interfaces (Regions A, B, C), construction state enums, grouping state enums, display mode enum, scenario schema
-- State architecture skeleton: what's shared via context (parameters, data package, display mode), what's passed as props (data to visualisation components), what's component-local (construction stage, grouping state)
-- Colour scheme constants: hierarchical warm/cool palette (blue-orange families, shade variations for four groups, neutral grey) — exact hex values as shared constants file
-- KaTeX integration decision and setup for mathematical notation rendering in SVG (probability-mode labels: $P(T^+ | D) = 0.90$ etc.)
-- **Status:** Not started
-- **Verify:** Project compiles, dev server runs, types are coherent
+**0.1: Project setup and shared foundations** ✓
+
+**What was done:**
+- Vite + React + TypeScript project initialized. GSAP and KaTeX installed as dependencies.
+- Folder structure: `src/components/`, `src/computation/`, `src/exploration/`, `src/data/`, `src/types/`, `src/constants/`, `src/state/`.
+- Shared TypeScript types in `src/types/`: `DataPackage` interface (three regions: A numerical, B textual with both display modes and both grouping states, C metadata), all enums (`IconArrayConstructionState`, `TreeConstructionState`, `GroupingState`, `TreeCombinationState`, `DisplayMode`), `ScenarioDefinition` interface with full vocabulary schema including singular/grammatical forms, `DEFAULT_VOCABULARY` fallback constants.
+- State architecture in `src/state/`: `useReducer` with typed actions (`SET_PARAMETER`, `SET_N`, `SET_SCENARIO`, `SET_DISPLAY_MODE`), `AppStateProvider` context distributing parameters and stub data package, `useAppState` hook.
+- Colour scheme in `src/constants/colours.ts`: hierarchical warm/cool palette (orange-based TP=#E66100, FN=#F5B041; blue-based TN=#1A5276, FP=#5DADE2; neutral=#9E9E9E). Derived from ColorBrewer/Okabe-Ito palettes. Tree node and icon colour mappings included.
+- KaTeX integration via `foreignObject` in SVG: `KaTeXLabel` component in `src/components/KaTeXLabel.tsx`. Renders LaTeX strings inside SVG using KaTeX's HTML output within foreignObject.
+- Temporary `FoundationDemo` in App.tsx for verification (state toggle, colour swatches, KaTeX-in-SVG test).
+
+**Spec divergences:**
+- KaTeX integration uses `foreignObject` wrapping KaTeX HTML output — this was left open in the spec ("Evaluate foreignObject+KaTeX HTML vs. pre-rendered approaches"). foreignObject chosen because it's simpler and works in all modern browsers; no need for SVG path conversion.
+
+**Forward-looking notes:**
+- The stub data package (`createStubDataPackage` in `AppStateContext.tsx`) returns zeroed-out counts. Subtask 1.1 will replace this with the real computation pipeline.
+- `src/state/parameterState.ts` handles `SET_SCENARIO` including specificity→FPR conversion.
+- **LaTeX string escaping:** LaTeX strings passed to `KaTeXLabel` must contain literal single backslashes (e.g. `\frac`, `\mid`). In JSX, use `String.raw` template literals: `` String.raw`P(D \mid T^+)` ``. Standard JS string escaping (`"\\mid"`) double-escapes. The template system (subtask 1.2) will produce these strings — it should output raw single-backslash LaTeX.
+- Node.js v24.14.1 was installed during this subtask (was not previously on the machine). PATH needs `/c/Program Files/nodejs` prepended in the bash shell.
+
+- **Status:** Complete
+- **Verify:** `npx tsc --noEmit` passes (zero type errors), `npx vite build` succeeds, dev server runs on `localhost:5173`
 
 ---
 
