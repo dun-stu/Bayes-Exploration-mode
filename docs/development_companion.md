@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layer 0 (scaffolding) complete. Layer 1 in progress — computation pipeline (1.1) done, template system (1.2) and scenario data (1.3) next.
+Layer 0 (scaffolding) complete. Layer 1 in progress — computation pipeline (1.1) and template system (1.2) done, scenario data (1.3) next.
 
 ---
 
@@ -84,15 +84,30 @@ Components are built with only the API surface that the current layer's consumer
 - **Status:** Complete
 - **Verify:** `npx vitest run src/computation/computeRegionA.test.ts` (25 tests pass), `npx tsc --noEmit` (zero errors), `npx vite build` (succeeds)
 
-**1.2: Template system (all outputs)**
-- Full parameterised text generation system: all ten output types × two display modes × two grouping states
-- Outputs 1–4 (Part-3-facing): problem statement text, question text, parameter display strings, derived result display strings — both frequency and probability versions
-- Outputs 5–10 (visualisation-facing): icon array compound labels (4 combinations: 2 grouping states × 2 display modes), tree node labels, tree branch labels, cross-branch combination labels
-- Three vocabulary layers (domain, structural, Bayesian) with progressive exposure model
-- Wording principles from strand b applied throughout
-- Scenario-adaptive vocabulary substitution
-- **Status:** Not started
-- **Verify:** Template outputs for all 6 scenarios match spec examples; both display modes produce correct notation; vocabulary substitution works across all domains
+**1.2: Template system (all outputs)** ✓
+
+**What was done:**
+- Pure function `computeRegionB` in `src/computation/computeRegionB.ts`. Takes `(DataPackageRegionA, ScenarioDefinition | null, DisplayMode)` → `DataPackageRegionB`.
+- All ten output types implemented: problem statement text, question text, parameter display strings (Y2 format + probability notation), derived result strings, icon array compound labels (4 combinations: 2 grouping × 2 display modes), tree node labels (counts + joint probabilities), tree branch labels (effective rates + input rates as LaTeX), cross-branch combination labels (count arithmetic + Bayes' theorem arithmetic), degenerate state messages, glossary entries.
+- Three vocabulary layers (domain, structural, Bayesian) with progressive exposure placement as specified. Bayesian parentheticals on base rate "(prior)", sensitivity "(likelihood)", total test-positive rate "(marginal likelihood)". FPR has no Bayesian parenthetical (honest asymmetry per spec).
+- Vocabulary resolution with `DEFAULT_VOCABULARY` fallback for null scenarios.
+- Number formatting: counts with comma separators (≥1000), percentages for icon array/parameter panel, decimals for probability-mode tree labels, LaTeX notation via `String.raw` for probability mode.
+- Key formatting rule: frequency-mode tree branches use **effective rates** (from integer counts); probability-mode tree branches use **input rates** (formal conditional probabilities). Parameter panel uses input rates in both modes.
+- Wired into `AppStateContext.tsx` — `createDataPackage` replaces `createStubDataPackage`, calling `computeRegionB` for real Region B output. Region C metadata also improved (pulls name/domain/description from scenario vocabulary).
+- 62 unit tests passing covering: mammography reference scenario (all outputs verified against spec examples), spam scenario (vocabulary substitution with "that" pronoun, Detection rate label, domain terms), default vocabulary (null scenario), degenerate case (N_T+ = 0), LaTeX well-formedness, number formatting, active display mode passthrough.
+
+**Spec divergences:**
+- `formatDecimal` uses 3 decimal places for values ≥ 0.01 (not 2) to correctly display values like 0.901 (P(¬D ∩ T−) for mammography). This is a formatting precision detail — the spec examples show "0.009", "0.089", "0.098", "0.901" which all need 3 decimal places. Trailing zeros are stripped to minimum 2 characters (so 0.90 stays as "0.90", not "0.900").
+- Output 4 degenerate case: the spec shows "Nobody [test_positive_name]" for frequency mode but also notes this is ungrammatical for non-human populations and suggests "No [population_name] [test_positive_name]" instead. Implementation uses the "No [population_name]" form consistently for all scenarios, matching the spec's own resolution.
+- Glossary entries (Output 10) and degenerate state messages (Output 9) are exported as separate helper functions (`generateGlossaryEntries`, `generateDegenerateMessages`) rather than embedded in Region B, since Region B's type structure doesn't have fields for them. They are available for any consumer that needs them (glossary component, contextual message display).
+
+**Forward-looking notes:**
+- Glossary entries and degenerate messages are not part of `DataPackageRegionB`'s type structure — they're exported as standalone functions. If the glossary component (could-cut) is built, it can call `generateGlossaryEntries` directly with the resolved vocabulary. Similarly, contextual messages can call `generateDegenerateMessages`.
+- The `capitalise` function capitalises the first letter of domain vocabulary for display in labels (e.g., "have the disease" → "Have the disease"). This works for all current vocabulary but may need attention if vocabulary terms ever start with special characters.
+- `extractShortDomainTerm` handles the "prevalence of the disease" → "prevalence" extraction for probability-mode parameter parentheticals. Other domain terms (e.g., "spam rate") pass through unchanged. If future scenarios use "prevalence of X" patterns, they'll also get shortened.
+
+- **Status:** Complete
+- **Verify:** `npx vitest run src/computation/computeRegionB.test.ts` (62 tests pass), `npx tsc --noEmit` (zero errors), `npx vite build` (succeeds)
 
 **1.3: Scenario data**
 - All 6 scenarios coded as data objects conforming to the schema: mammography, COVID antigen, blood donation, spam filter, factory inspection, drug screening

@@ -3,7 +3,8 @@
  *
  * The data package is derived state computed via useMemo from the current parameters.
  * Region A is computed by the real computation pipeline.
- * Region B (text) and Region C (metadata) are stubs until subtasks 1.2 and 1.3.
+ * Region B is computed by the template system.
+ * Region C (metadata) is a stub until subtask 1.3.
  */
 
 import { createContext, useContext, useReducer, useMemo, type ReactNode } from 'react';
@@ -16,6 +17,7 @@ import {
   parameterReducer,
 } from './parameterState';
 import { computeRegionA } from '../computation/computeRegionA';
+import { computeRegionB } from '../computation/computeRegionB';
 
 // ===== Context Types =====
 
@@ -28,82 +30,11 @@ interface AppStateContextValue {
 const AppStateContext = createContext<AppStateContextValue | null>(null);
 
 // ===== Data Package Construction =====
-// Region A uses the real computation pipeline. Region B and C are stubs until subtasks 1.2 and 1.3.
+// Region A: real computation pipeline. Region B: real template system.
+// Region C (metadata): stub until subtask 1.3 populates scenario data.
 
-function createStubDataPackage(params: ParameterState): DataPackage {
-  const stubGroupLabel = {
-    domainLabel: '',
-    structuralLabel: '',
-    countDisplay: '',
-  };
-
-  const stubByCondition = {
-    population: stubGroupLabel,
-    conditionPositive: {
-      group: stubGroupLabel,
-      truePositive: stubGroupLabel,
-      falseNegative: stubGroupLabel,
-    },
-    conditionNegative: {
-      group: stubGroupLabel,
-      falsePositive: stubGroupLabel,
-      trueNegative: stubGroupLabel,
-    },
-  };
-
-  const stubByTestResult = {
-    population: stubGroupLabel,
-    testPositive: {
-      group: stubGroupLabel,
-      compositionString: '',
-      truePositive: stubGroupLabel,
-      falsePositive: stubGroupLabel,
-    },
-    testNegative: {
-      group: stubGroupLabel,
-      compositionString: '',
-      falseNegative: stubGroupLabel,
-      trueNegative: stubGroupLabel,
-    },
-  };
-
-  const stubTreeNodes = {
-    root: '',
-    conditionPositive: '',
-    conditionNegative: '',
-    truePositive: '',
-    falseNegative: '',
-    falsePositive: '',
-    trueNegative: '',
-  };
-
-  const stubTreeBranches = {
-    baseRatePositive: '',
-    baseRateNegative: '',
-    sensitivity: '',
-    falseNegativeRate: '',
-    falsePositiveRate: '',
-    trueNegativeRate: '',
-  };
-
-  const stubDisplayModeLabels = {
-    byCondition: stubByCondition,
-    byTestResult: stubByTestResult,
-    treeNodes: stubTreeNodes,
-    treeBranches: stubTreeBranches,
-    crossBranchCombination: { sumLabel: '', posteriorLabel: '' },
-    questionText: '',
-    problemStatementText: '',
-    parameterDisplayStrings: {
-      baseRate: '',
-      sensitivity: '',
-      fpr: '',
-      totalTestPositiveRate: '',
-      posterior: '',
-    },
-  };
-
-  // Region A — computed by the real pipeline
+function createDataPackage(params: ParameterState): DataPackage {
+  // Region A — computed by the computation pipeline
   const regionA = computeRegionA({
     n: params.n,
     baseRate: params.baseRate,
@@ -111,19 +42,18 @@ function createStubDataPackage(params: ParameterState): DataPackage {
     fpr: params.fpr,
   });
 
-  return {
-    regionA,
-    regionB: {
-      frequency: stubDisplayModeLabels,
-      probability: stubDisplayModeLabels,
-      activeDisplayMode: params.displayMode,
-    },
-    regionC: {
-      scenarioId: params.scenarioId ?? 'custom',
-      scenarioName: params.scenarioId ? '' : 'Custom',
-      domain: '',
-    },
+  // Region B — computed by the template system
+  const regionB = computeRegionB(regionA, params.scenarioVocabulary, params.displayMode);
+
+  // Region C — metadata (stub until scenario data is populated in 1.3)
+  const regionC = {
+    scenarioId: params.scenarioId ?? 'custom',
+    scenarioName: params.scenarioVocabulary?.name ?? 'Custom',
+    domain: params.scenarioVocabulary?.domain ?? '',
+    description: params.scenarioVocabulary?.description,
   };
+
+  return { regionA, regionB, regionC };
 }
 
 // ===== Provider =====
@@ -132,9 +62,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [parameters, dispatch] = useReducer(parameterReducer, INITIAL_PARAMETER_STATE);
 
   // Data package derived from parameters.
-  // Region A: real computation pipeline. Region B/C: stubs until subtasks 1.2/1.3.
+  // Region A: computation pipeline. Region B: template system. Region C: metadata.
   const dataPackage = useMemo(
-    () => createStubDataPackage(parameters),
+    () => createDataPackage(parameters),
     [parameters],
   );
 
