@@ -8,7 +8,7 @@ This file provides standing instructions for the coding agent during development
 
 - **`docs/development_companion.md`** — Development status and tracking doc. Read at session start; update after completing work. This is the primary coordination document.
 - **`docs/rubric_reference.md`** — Relevant assessment criteria from the project rubric. Use this to judge whether something is report-relevant.
-- **Implementation Details doc (`docs/Implementation_Details.md`)** — The full implementation specification. You will usually receive only the relevant section(s) for your current subtask. If you encounter an issue with potential cascading effects across components, request that the full document be loaded.
+- **Implementation Details doc** — The full implementation specification. This is NOT in the repo — it is an external document. You will usually receive only a curated spec extract (the relevant section(s) for your current subtask) as part of your prompt. If you encounter an issue with potential cascading effects across components, ask the user to load the full document.
 
 ---
 
@@ -40,12 +40,18 @@ When requesting verification screenshots, note if a particular screenshot might 
 
 ---
 
+## Scope Discipline
+
+The visualisation components (icon array and frequency tree) expose a rich set of interaction capabilities in the Implementation spec. **Only build the capabilities that the current layer's consumers need.** For the exploration mode build (Layers 0–5), the components need: state setting (construction stage, grouping state, display mode), regrouping trigger, and data package updates. Part 4 interaction hooks (icon-level event reporting, node value input, batch colouring for construction, region highlighting for guided mode) are **deferred** — the architecture should be friendly to later extension (clean separation, refs exposed, event handler props easy to add) but should not implement unused capabilities prematurely.
+
+---
+
 ## Verification
 
 After completing a subtask:
 
-1. **Describe what the user should see** — what the expected visual or functional outcome looks like.
-2. **Ask for what you need to verify** — request specific screenshots, command output, or other evidence so *you* can confirm the outcome is correct. Don't rely on the user to judge correctness alone.
+1. **Describe what the user should see** — what the expected visual or functional outcome looks like, so they have a quick sense-check.
+2. **Ask for what you need to verify** — request specific screenshots, command output, or other evidence so *you* can confirm the outcome is correct. Both: tell the user what correct looks like, and ask for what you need to check it yourself.
 
 ---
 
