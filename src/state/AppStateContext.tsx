@@ -2,7 +2,8 @@
  * App-level state context — distributes parameter state and data package to all children.
  *
  * The data package is derived state computed via useMemo from the current parameters.
- * Currently returns a stub; the real computation pipeline is subtask 1.1.
+ * Region A is computed by the real computation pipeline.
+ * Region B (text) and Region C (metadata) are stubs until subtasks 1.2 and 1.3.
  */
 
 import { createContext, useContext, useReducer, useMemo, type ReactNode } from 'react';
@@ -14,6 +15,7 @@ import {
   INITIAL_PARAMETER_STATE,
   parameterReducer,
 } from './parameterState';
+import { computeRegionA } from '../computation/computeRegionA';
 
 // ===== Context Types =====
 
@@ -25,8 +27,8 @@ interface AppStateContextValue {
 
 const AppStateContext = createContext<AppStateContextValue | null>(null);
 
-// ===== Stub Data Package =====
-// Placeholder until the computation pipeline (subtask 1.1) and template system (subtask 1.2) are built.
+// ===== Data Package Construction =====
+// Region A uses the real computation pipeline. Region B and C are stubs until subtasks 1.2 and 1.3.
 
 function createStubDataPackage(params: ParameterState): DataPackage {
   const stubGroupLabel = {
@@ -101,30 +103,16 @@ function createStubDataPackage(params: ParameterState): DataPackage {
     },
   };
 
+  // Region A — computed by the real pipeline
+  const regionA = computeRegionA({
+    n: params.n,
+    baseRate: params.baseRate,
+    sensitivity: params.sensitivity,
+    fpr: params.fpr,
+  });
+
   return {
-    regionA: {
-      n: params.n,
-      nD: 0,
-      nNotD: 0,
-      nTP: 0,
-      nFN: 0,
-      nFP: 0,
-      nTN: 0,
-      nTestPos: 0,
-      nTestNeg: 0,
-      inputBaseRate: params.baseRate,
-      inputSensitivity: params.sensitivity,
-      inputFPR: params.fpr,
-      effectiveSensitivity: 0,
-      effectiveFPR: 0,
-      effectiveSpecificity: 0,
-      totalTestPositiveRate: 0,
-      jointProbDAndTestPos: 0,
-      jointProbDAndTestNeg: 0,
-      jointProbNotDAndTestPos: 0,
-      jointProbNotDAndTestNeg: 0,
-      posterior: null,
-    },
+    regionA,
     regionB: {
       frequency: stubDisplayModeLabels,
       probability: stubDisplayModeLabels,
@@ -144,7 +132,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [parameters, dispatch] = useReducer(parameterReducer, INITIAL_PARAMETER_STATE);
 
   // Data package derived from parameters.
-  // Will be replaced with real computation pipeline in subtask 1.1.
+  // Region A: real computation pipeline. Region B/C: stubs until subtasks 1.2/1.3.
   const dataPackage = useMemo(
     () => createStubDataPackage(parameters),
     [parameters],

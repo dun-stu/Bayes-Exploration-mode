@@ -68,3 +68,9 @@ Subtask entries sit under their relevant section in the decomposition. Mark comp
 - **For the current subtask:** You should have a curated spec extract covering the relevant section(s) of the Implementation Details doc. If something in the extract is unclear or seems incomplete, ask.
 - **For cross-cutting concerns:** If your work touches shared infrastructure (computation pipeline, data package structure, colour scheme, template system, scenario data structure), and you don't have the relevant spec section, ask for it.
 - **For cascading issues:** If you need to see the full Implementation Details doc to assess the scope of an issue, say so. The user can load it.
+
+---
+
+## Workflow Confirmation
+
+When carrying out workflow steps — whether from this file (e.g., "After Completing a Subtask" steps 1–3, "Verification" steps 1–2) or from the `Planning_Thread_Guide.md` (e.g., Session Workflow Steps 1–5) — **state explicitly at the end which workflow steps you completed.** A brief checklist confirmation is sufficient: name each step and confirm it was done. This makes it visible when steps were completed and easy to catch if any were skipped.

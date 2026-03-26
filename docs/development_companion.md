@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layer 0 (scaffolding) complete. Project initialized with Vite + React + TypeScript. Shared types, state architecture, colour scheme, and KaTeX integration in place. Ready for Layer 1 (data foundation).
+Layer 0 (scaffolding) complete. Layer 1 in progress — computation pipeline (1.1) done, template system (1.2) and scenario data (1.3) next.
 
 ---
 
@@ -65,13 +65,24 @@ Components are built with only the API surface that the current layer's consumer
 
 ### Layer 1 — Data Foundation
 
-**1.1: Computation pipeline**
-- Pure function: raw parameters ($N$, base rate, sensitivity, FPR) → Region A of data package (all integer partition counts, raw rates, effective rates, joint probabilities, posterior)
-- Seven-step pipeline as specified: first-level exact partition, second-level rounded partition, regrouped counts, posterior, effective rates, joint probabilities, input rates preserved
-- Rounding logic: standard rounding, $N$-relative base rate steps guaranteeing integer $N_D$, cascading rounding for second-level counts
-- Edge case handling: zero-from-rounding, degenerate $N_{T^+} = 0$, extreme parameter values
-- **Status:** Not started
-- **Verify:** Unit tests against all 6 curated scenarios confirming correct integer counts, rounding behaviour, edge cases
+**1.1: Computation pipeline** ✓
+
+**What was done:**
+- Pure function `computeRegionA` in `src/computation/computeRegionA.ts`. Takes `{n, baseRate, sensitivity, fpr}`, returns `DataPackageRegionA`.
+- Seven-step pipeline implemented exactly as specified: first-level exact partition, second-level rounded partition (standard rounding via `Math.floor(x + 0.5)`), regrouped counts, posterior (null when N_T+=0), effective rates, joint probabilities, input rates preserved.
+- Wired into `AppStateContext.tsx` — `createStubDataPackage` now calls `computeRegionA` for Region A. Region B/C remain stubs.
+- Vitest installed and 25 unit tests passing: mammography reference scenario (all fields verified against spec), three additional scenario profiles, edge cases (sensitivity/FPR at 0% and 100%, very small N_D, zero-from-rounding), partition constraint verification, joint probability consistency.
+
+**Spec divergences:**
+- First-level partition uses `standardRound(n * baseRate)` defensively, even though N-relative base rate steps should guarantee an integer. This handles any floating-point arithmetic edge cases without changing behaviour for valid inputs. No functional divergence from spec.
+
+**Forward-looking notes:**
+- The `ComputationInputs` interface is exported from `computeRegionA.ts` — subtask 1.2 (template system) and any other consumers can import it.
+- Vitest is now a dev dependency. Tests live alongside source files (`*.test.ts`). No special test config needed — Vitest picks up the Vite config automatically.
+- Effective rates for degenerate cases (N_D=0, N_¬D=0) return 0 rather than NaN/undefined. The base rate range (1/N to (N-1)/N) prevents these in practice, but the function is defensive.
+
+- **Status:** Complete
+- **Verify:** `npx vitest run src/computation/computeRegionA.test.ts` (25 tests pass), `npx tsc --noEmit` (zero errors), `npx vite build` (succeeds)
 
 **1.2: Template system (all outputs)**
 - Full parameterised text generation system: all ten output types × two display modes × two grouping states
