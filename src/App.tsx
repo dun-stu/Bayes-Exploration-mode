@@ -2,21 +2,37 @@ import { useRef, useState, useEffect } from 'react';
 import { AppStateProvider, useAppState } from './state';
 import { SCENARIOS } from './data/scenarios';
 import { IconArray } from './components/iconArray';
-import { IconArrayConstructionState, GroupingState, DisplayMode } from './types';
+import { FrequencyTree } from './components/frequencyTree';
+import {
+  IconArrayConstructionState,
+  TreeConstructionState,
+  TreeCombinationState,
+  GroupingState,
+  DisplayMode,
+} from './types';
 
 /**
- * Temporary demo layout for subtasks 2.1–2.3 — icon array verification.
- * Provides scenario selection, N control, construction state selector,
- * display mode toggle, and grouping state toggle.
+ * Temporary demo layout for subtasks 2.1–2.4 — visualisation verification.
+ * Provides scenario selection, N control, and component-specific controls.
  * Will be replaced by exploration mode layout in Layer 3.
  */
-function IconArrayDemo() {
+
+type VisComponent = 'iconArray' | 'frequencyTree';
+
+function VisualisationDemo() {
   const { parameters, dispatch, dataPackage } = useAppState();
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const [constructionState, setConstructionState] = useState(IconArrayConstructionState.FullyPartitioned);
+  const [activeComponent, setActiveComponent] = useState<VisComponent>('frequencyTree');
   const [displayMode, setDisplayMode] = useState(DisplayMode.Frequency);
+
+  // Icon array state
+  const [iaConstructionState, setIaConstructionState] = useState(IconArrayConstructionState.FullyPartitioned);
   const [groupingState, setGroupingState] = useState(GroupingState.GroupedByCondition);
+
+  // Frequency tree state
+  const [treeConstructionState, setTreeConstructionState] = useState(TreeConstructionState.FullyBranched);
+  const [combinationState, setCombinationState] = useState(TreeCombinationState.CombinationShown);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -35,8 +51,8 @@ function IconArrayDemo() {
 
   return (
     <div style={{ padding: 16, fontFamily: 'system-ui, sans-serif', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Controls */}
-      <div style={{ marginBottom: 12, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* Shared controls */}
+      <div style={{ marginBottom: 8, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <label>
           Scenario:{' '}
           <select
@@ -68,30 +84,6 @@ function IconArrayDemo() {
         </label>
 
         <label>
-          State:{' '}
-          <select
-            value={constructionState}
-            onChange={(e) => setConstructionState(e.target.value as IconArrayConstructionState)}
-          >
-            <option value={IconArrayConstructionState.Unpartitioned}>Unpartitioned</option>
-            <option value={IconArrayConstructionState.BaseRatePartitioned}>Base Rate</option>
-            <option value={IconArrayConstructionState.ConditionPositiveSubpartitioned}>Cond+ Sub</option>
-            <option value={IconArrayConstructionState.FullyPartitioned}>Fully Partitioned</option>
-          </select>
-        </label>
-
-        <label>
-          Grouping:{' '}
-          <select
-            value={groupingState}
-            onChange={(e) => setGroupingState(e.target.value as GroupingState)}
-          >
-            <option value={GroupingState.GroupedByCondition}>By Condition</option>
-            <option value={GroupingState.GroupedByTestResult}>By Test Result</option>
-          </select>
-        </label>
-
-        <label>
           Mode:{' '}
           <select
             value={displayMode}
@@ -102,6 +94,17 @@ function IconArrayDemo() {
           </select>
         </label>
 
+        <label>
+          View:{' '}
+          <select
+            value={activeComponent}
+            onChange={(e) => setActiveComponent(e.target.value as VisComponent)}
+          >
+            <option value="iconArray">Icon Array</option>
+            <option value="frequencyTree">Frequency Tree</option>
+          </select>
+        </label>
+
         <span style={{ fontSize: 13, color: '#616161' }}>
           N_D={dataPackage.regionA.nD}, TP={dataPackage.regionA.nTP},
           FN={dataPackage.regionA.nFN}, FP={dataPackage.regionA.nFP},
@@ -109,7 +112,63 @@ function IconArrayDemo() {
         </span>
       </div>
 
-      {/* Icon array container — fills remaining space */}
+      {/* Component-specific controls */}
+      <div style={{ marginBottom: 12, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+        {activeComponent === 'iconArray' && (
+          <>
+            <label>
+              State:{' '}
+              <select
+                value={iaConstructionState}
+                onChange={(e) => setIaConstructionState(e.target.value as IconArrayConstructionState)}
+              >
+                <option value={IconArrayConstructionState.Unpartitioned}>Unpartitioned</option>
+                <option value={IconArrayConstructionState.BaseRatePartitioned}>Base Rate</option>
+                <option value={IconArrayConstructionState.ConditionPositiveSubpartitioned}>Cond+ Sub</option>
+                <option value={IconArrayConstructionState.FullyPartitioned}>Fully Partitioned</option>
+              </select>
+            </label>
+            <label>
+              Grouping:{' '}
+              <select
+                value={groupingState}
+                onChange={(e) => setGroupingState(e.target.value as GroupingState)}
+              >
+                <option value={GroupingState.GroupedByCondition}>By Condition</option>
+                <option value={GroupingState.GroupedByTestResult}>By Test Result</option>
+              </select>
+            </label>
+          </>
+        )}
+        {activeComponent === 'frequencyTree' && (
+          <>
+            <label>
+              Construction:{' '}
+              <select
+                value={treeConstructionState}
+                onChange={(e) => setTreeConstructionState(e.target.value as TreeConstructionState)}
+              >
+                <option value={TreeConstructionState.RootOnly}>Root Only</option>
+                <option value={TreeConstructionState.FirstBranch}>First Branch</option>
+                <option value={TreeConstructionState.ConditionPositiveSecondBranch}>Cond+ 2nd Branch</option>
+                <option value={TreeConstructionState.FullyBranched}>Fully Branched</option>
+              </select>
+            </label>
+            <label>
+              Combination:{' '}
+              <select
+                value={combinationState}
+                onChange={(e) => setCombinationState(e.target.value as TreeCombinationState)}
+              >
+                <option value={TreeCombinationState.CombinationHidden}>Hidden</option>
+                <option value={TreeCombinationState.CombinationShown}>Shown</option>
+              </select>
+            </label>
+          </>
+        )}
+      </div>
+
+      {/* Visualisation container — fills remaining space */}
       <div
         ref={containerRef}
         style={{
@@ -121,15 +180,27 @@ function IconArrayDemo() {
         }}
       >
         {containerSize.width > 0 && containerSize.height > 0 && (
-          <IconArray
-            regionA={dataPackage.regionA}
-            regionB={dataPackage.regionB}
-            width={containerSize.width}
-            height={containerSize.height}
-            constructionState={constructionState}
-            groupingState={groupingState}
-            displayMode={displayMode}
-          />
+          activeComponent === 'iconArray' ? (
+            <IconArray
+              regionA={dataPackage.regionA}
+              regionB={dataPackage.regionB}
+              width={containerSize.width}
+              height={containerSize.height}
+              constructionState={iaConstructionState}
+              groupingState={groupingState}
+              displayMode={displayMode}
+            />
+          ) : (
+            <FrequencyTree
+              regionA={dataPackage.regionA}
+              regionB={dataPackage.regionB}
+              width={containerSize.width}
+              height={containerSize.height}
+              constructionState={treeConstructionState}
+              combinationState={combinationState}
+              displayMode={displayMode}
+            />
+          )
         )}
       </div>
     </div>
@@ -139,7 +210,7 @@ function IconArrayDemo() {
 function App() {
   return (
     <AppStateProvider>
-      <IconArrayDemo />
+      <VisualisationDemo />
     </AppStateProvider>
   );
 }

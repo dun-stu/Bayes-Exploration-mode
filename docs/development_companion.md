@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layers 0 (scaffolding) and 1 (data foundation) complete. Layer 2 (static rendering) in progress — subtasks 2.1 (icon array core grid and colouring), 2.2 (labels and construction states), and 2.3 (second grouping layout) complete. Next: 2.4 (frequency tree). First harmonisation pass done after Layer 1.
+Layers 0 (scaffolding), 1 (data foundation), and 2 (static rendering) complete. Both visualisation components — icon array and frequency tree — render fully with all construction states, both display modes, and container-responsive scaling. Next: Layer 3 (app shell and integration — first working exploration mode). Harmonisation passes done after Layer 1; Layer 2 harmonisation pending.
 
 ---
 
@@ -204,16 +204,32 @@ Gap pixel offset in Step 7 of `computeLayout` was applied based on grid column/r
 - **Status:** Complete
 - **Verify:** `npx vitest run src/components/iconArray/dualLayout.test.ts` (39 tests pass), `npx vitest run` (all 311 tests pass), `npx tsc --noEmit` (zero errors), `npx vite build` (succeeds), visual verification of both grouping states at mammography N=1000 frequency mode, mammography N=1000 probability mode by-test-result, spam filter N=200 by-test-result
 
-**2.4: Frequency tree — full static rendering**
-- Vertical tree: root at top, two first-level nodes, four leaf nodes
-- Node rendering: uniform sized rounded rectangles, colour-coded by group, labels from data package
-- Branch rendering: neutral grey lines connecting parent to child, branch labels positioned midway
-- Cross-branch combination: bracket beneath TP and FP nodes with sum and posterior labels
-- All five construction states: `root-only`, `first-branch`, `condition-positive-second-branch`, `fully-branched`, `cross-branch-combined`
-- Container-responsive scaling
-- Both display modes (frequency labels and probability notation)
-- **Status:** Not started
-- **Verify:** Screenshot of full tree with combination; each construction state; probability mode labels rendering correctly (KaTeX)
+**2.4: Frequency tree — full static rendering** ✓
+
+**What was done:**
+- `FrequencyTree` React component in `src/components/frequencyTree/FrequencyTree.tsx`. Renders a vertical SVG tree consuming Region A (for structure) and Region B (for all text labels).
+- Layout engine in `src/components/frequencyTree/layout.ts` as a pure function: `computeTreeLayout(width, height) → TreeLayout`. Fixed topology with proportional scaling — all positions and sizes scale linearly with the container's limiting dimension (reference design: 1000×700). Minimum scale floor (0.35) prevents illegibility.
+- Seven nodes: root (grey), two first-level (warm orange / cool blue), four leaves (TP dark warm, FN light warm, FP light cool, TN dark cool). Nodes are uniformly sized rounded rectangles using `TREE_NODE_COLORS` from `colours.ts`. Node text colour adapts for contrast (white on dark fills, dark on light fills).
+- Six branches: neutral grey lines (`COLORS.branch`) connecting parent bottom-centre to child top-centre. Branch labels from `regionB.treeBranches` positioned midway, with left/right side assignment matching the tree's left-right branch direction.
+- Cross-branch combination: U-shaped bracket path beneath TP and FP leaf nodes with tick marks at the arms. Sum and posterior labels from `regionB.crossBranchCombination` centred below. Only shown when `TreeCombinationState.CombinationShown` AND `TreeConstructionState.FullyBranched` (orthogonal dimensions).
+- Four construction states via visibility sets: `RootOnly` (1 node, 0 branches), `FirstBranch` (3 nodes, 2 branches), `ConditionPositiveSecondBranch` (5 nodes, 4 branches), `FullyBranched` (7 nodes, 6 branches). Visibility logic is pure functions (`isNodeVisible`, `isBranchVisible`) for testability.
+- Display mode support: frequency mode uses plain text labels; probability mode uses KaTeX rendering. Node labels in probability mode use a `KaTeXInline` component inside a `foreignObject` with flexbox centring. Branch and bracket labels in probability mode use the existing `KaTeXLabel` component.
+- Demo in `App.tsx` updated to a tabbed layout (`VisualisationDemo`) with View selector (Icon Array / Frequency Tree), shared controls (scenario, N, display mode), and component-specific controls (construction state + combination state for tree; construction state + grouping state for icon array).
+- 43 unit tests in `layout.test.ts`: node count and identity, branch count and identity, spatial ordering (root above first-level above leaves; left-to-right ordering), container bounds, branch connectivity (parent-child attachment points), branch label positioning (between parent and child), bracket geometry (below leaves, spanning TP to FP, centred labels), proportional scaling (2× container → ~2× node size), extreme containers (very small, very wide, very tall), construction state visibility (all 4 states: correct node/branch counts, progressive visibility, root always visible).
+
+**Spec divergences:**
+- Node labels in probability mode use an inline KaTeX renderer (`KaTeXInline`) inside a centred `foreignObject` div, rather than the standalone `KaTeXLabel` component used elsewhere. This was necessary because node labels need vertical and horizontal centring within the node rectangle, which `KaTeXLabel`'s absolute-positioned foreignObject doesn't support. The inline approach uses flexbox centring within the foreignObject for reliable alignment. Both approaches use the same underlying KaTeX rendering.
+- Reference node dimensions (150×44 at scale=1) were tuned larger than an initial attempt (130×38) to accommodate probability-mode labels like "P(D ∩ T⁺) = 0.009" without clipping. The spec says "a fixed moderate size that fits the longer labels" — this is the implementation of that constraint.
+- Branch label side assignment (left branches get left-side labels, right branches get right-side labels) is an implementation detail not specified in the spec. This ensures labels don't overlap the branch lines and maintains visual clarity.
+
+**Forward-looking notes:**
+- The `computeTreeLayout` function is a pure function that can be called outside React for testing or for Layer 4 animation planning. The layout result includes all positions needed for GSAP animation targets.
+- The `isNodeVisible` / `isBranchVisible` functions and the `VISIBLE_NODES` / `VISIBLE_BRANCHES` maps are exported for use by Layer 4's construction animation — the animation can determine which elements to reveal at each step.
+- The bracket is rendered as an SVG path — Layer 4 can animate it using GSAP's `drawSVG` or stroke-dashoffset technique for the "bracket draws" animation step.
+- The `KaTeXInline` component is local to `FrequencyTree.tsx`. If other components need inline centred KaTeX in foreignObjects, it could be extracted to a shared utility. For now it's kept local per scope discipline.
+
+- **Status:** Complete
+- **Verify:** `npx vitest run src/components/frequencyTree/layout.test.ts` (43 tests pass), `npx vitest run` (all 354 tests pass), `npx tsc --noEmit` (zero errors), `npx vite build` (succeeds), visual verification of: full tree with combination at mammography N=1000 frequency mode, root-only state, condition-positive-second-branch state, probability mode with KaTeX labels, spam filter scenario with domain vocabulary
 
 ---
 
