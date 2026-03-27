@@ -49,7 +49,15 @@ However, development-time captures are useful *raw material* for later report fi
 
 Do **not** routinely save every verification screenshot. Most verification screenshots confirm "it works" and have no report value. Save only those that could plausibly illustrate a specific point in the Technical Quality, Evaluation, or Presentation sections.
 
-Suggest the user save to a designated folder (e.g., `report-assets/`) with a brief filename indicating what it shows.
+#### Saving screenshots — process
+
+Report-asset screenshots are saved to `report-assets/` (in the external `For development` folder, not the repo) with descriptive filenames and an entry in `report-assets/INDEX.md`. When a subtask produces screenshots worth saving, follow whichever path applies:
+
+1. **Screenshots taken during development (Preview tool verification):** The Preview tool returns images inline — it does not save files to disk. If a Preview capture is worth saving, tell the user which state to reproduce and have them take a screenshot manually (see path 2).
+
+2. **Screenshots the user takes after the subtask is done:** Provide exact capture instructions — which scenario, which N value, which state/toggle, and any other selections needed. The user will take the screenshots (via Win+Shift+S or similar) and pass them back for verification. Once verified, copy the files from the user's screenshots folder (`~/Pictures/Screenshots/`) to `report-assets/` with descriptive filenames and update the INDEX.
+
+In both cases: the INDEX entry should record what the image shows, why it was saved, and potential report use (see existing entries for format). Do this as part of the subtask completion flow, before the final commit.
 
 ---
 
