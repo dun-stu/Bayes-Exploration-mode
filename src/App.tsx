@@ -2,12 +2,13 @@ import { useRef, useState, useEffect } from 'react';
 import { AppStateProvider, useAppState } from './state';
 import { SCENARIOS } from './data/scenarios';
 import { IconArray } from './components/iconArray';
-import { IconArrayConstructionState, DisplayMode } from './types';
+import { IconArrayConstructionState, GroupingState, DisplayMode } from './types';
 
 /**
- * Temporary demo layout for subtasks 2.1–2.2 — icon array verification.
+ * Temporary demo layout for subtasks 2.1–2.3 — icon array verification.
  * Provides scenario selection, N control, construction state selector,
- * and display mode toggle. Will be replaced by exploration mode layout in Layer 3.
+ * display mode toggle, and grouping state toggle.
+ * Will be replaced by exploration mode layout in Layer 3.
  */
 function IconArrayDemo() {
   const { parameters, dispatch, dataPackage } = useAppState();
@@ -15,6 +16,7 @@ function IconArrayDemo() {
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [constructionState, setConstructionState] = useState(IconArrayConstructionState.FullyPartitioned);
   const [displayMode, setDisplayMode] = useState(DisplayMode.Frequency);
+  const [groupingState, setGroupingState] = useState(GroupingState.GroupedByCondition);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -79,6 +81,17 @@ function IconArrayDemo() {
         </label>
 
         <label>
+          Grouping:{' '}
+          <select
+            value={groupingState}
+            onChange={(e) => setGroupingState(e.target.value as GroupingState)}
+          >
+            <option value={GroupingState.GroupedByCondition}>By Condition</option>
+            <option value={GroupingState.GroupedByTestResult}>By Test Result</option>
+          </select>
+        </label>
+
+        <label>
           Mode:{' '}
           <select
             value={displayMode}
@@ -114,6 +127,7 @@ function IconArrayDemo() {
             width={containerSize.width}
             height={containerSize.height}
             constructionState={constructionState}
+            groupingState={groupingState}
             displayMode={displayMode}
           />
         )}

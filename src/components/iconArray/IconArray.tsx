@@ -4,13 +4,12 @@
  *
  * Subtask 2.1: core grid and colouring.
  * Subtask 2.2: compound label system, construction state colouring, display mode.
- * Subtask 2.3 (pending): second grouping layout (by-test-result).
+ * Subtask 2.3: second grouping layout (by-test-result), dual positions, grouping state switching.
  * Layer 4 (pending): animation (regrouping, format-switching cross-fade).
  *
- * Accepts Region A (counts), Region B (labels), construction state, display mode,
- * and container dimensions. Renders rounded-square SVG icons coloured by partition
- * group according to construction state, plus compound first-level labels from
- * the active display mode's label set.
+ * Both by-condition and by-test-result layouts are computed upfront. Each icon
+ * stores positions from both layouts; the groupingState prop selects which set
+ * to render (hard snap for now — Layer 4 adds animation interpolation).
  */
 
 import { useMemo } from 'react';
@@ -18,14 +17,15 @@ import type {
   DataPackageRegionA,
   DataPackageRegionB,
   ByConditionLabels,
+  ByTestResultLabels,
 } from '../../types';
 import { IconArrayConstructionState, GroupingState, DisplayMode } from '../../types';
 import { ICON_COLORS } from '../../constants';
 import {
-  computeLayout,
-  byConditionGrouping,
-  type IconData,
-  type LayoutResult,
+  computeDualLayout,
+  type DualLayoutIcon,
+  type DualLayoutResult,
+  type IconGroup,
 } from './layout';
 
 // ===== Props =====
@@ -51,7 +51,7 @@ interface IconArrayProps {
  *   FullyPartitioned → all four groups distinct
  */
 export function resolveIconColour(
-  group: IconData['group'],
+  group: IconGroup,
   constructionState: IconArrayConstructionState,
 ): string {
   switch (constructionState) {
@@ -59,19 +59,15 @@ export function resolveIconColour(
       return ICON_COLORS.unpartitioned;
 
     case IconArrayConstructionState.BaseRatePartitioned:
-      // Warm family (condition-positive) vs cool family (condition-negative).
-      // No shade variation — use primary colour for entire family.
       if (group === 'truePositive' || group === 'falseNegative') {
-        return ICON_COLORS.truePositive; // warm primary
+        return ICON_COLORS.truePositive;
       }
-      return ICON_COLORS.trueNegative; // cool primary
+      return ICON_COLORS.trueNegative;
 
     case IconArrayConstructionState.ConditionPositiveSubpartitioned:
-      // Warm region: full shade variation (TP vs FN distinct).
-      // Cool region: still uniform (no FP/TN distinction yet).
       if (group === 'truePositive') return ICON_COLORS.truePositive;
       if (group === 'falseNegative') return ICON_COLORS.falseNegative;
-      return ICON_COLORS.trueNegative; // cool primary for both FP and TN
+      return ICON_COLORS.trueNegative;
 
     case IconArrayConstructionState.FullyPartitioned:
       return ICON_COLORS[group];
@@ -91,48 +87,32 @@ function cornerRadius(iconSize: number): number {
 
 // ===== Label Prominence Scaling =====
 
-/**
- * Compound label font size scales continuously with icon size.
- * At high N (small icons): labels are larger and more prominent — primary info channel.
- * At moderate N (large icons): labels are smaller, secondary to the visual.
- *
- * The function maps iconSize to fontSize inversely: smaller icons → larger labels.
- * Range: ~10px at large icons (N≈100) to ~14px at small icons (N≈1000).
- */
 export function labelFontSize(iconSize: number): number {
   const minFont = 10;
   const maxFont = 14;
-  const smallIcon = 4;  // high N
-  const largeIcon = 20; // moderate N
-  // Invert: small icon → large font
+  const smallIcon = 4;
+  const largeIcon = 20;
   const t = Math.min(1, Math.max(0, (iconSize - smallIcon) / (largeIcon - smallIcon)));
   return maxFont - t * (maxFont - minFont);
 }
 
-/**
- * Label font weight: bolder at high N (small icons) where labels are the
- * primary information channel. Range: 500–700.
- */
 export function labelFontWeight(iconSize: number): number {
   const smallIcon = 4;
   const largeIcon = 20;
   const t = Math.min(1, Math.max(0, (iconSize - smallIcon) / (largeIcon - smallIcon)));
-  return Math.round(700 - t * 200); // 700 at small icon, 500 at large
+  return Math.round(700 - t * 200);
 }
 
 // ===== Label Content per Construction State =====
 
-/**
- * Determines what label text to show for each first-level region given
- * the construction state. Returns null when no label should be shown.
- */
 export interface CompoundLabelContent {
-  /** Main line: domain label + count, e.g. "Have the disease: 10" */
   mainLine: string;
-  /** Composition line (sub-group breakdown), or null if not yet sub-partitioned. */
   compositionLine: string | null;
 }
 
+/**
+ * Build label content for by-condition grouping.
+ */
 export function buildLabelContent(
   labels: ByConditionLabels,
   constructionState: IconArrayConstructionState,
@@ -145,9 +125,6 @@ export function buildLabelContent(
   const cnGroup = labels.conditionNegative.group;
 
   if (constructionState === IconArrayConstructionState.BaseRatePartitioned) {
-    // First-level only — no sub-group composition.
-    // Extract just the count (the countDisplay includes the full compound string,
-    // so we need to extract the count portion before the parenthetical).
     const cpCount = extractCountOnly(cpGroup.countDisplay);
     const cnCount = extractCountOnly(cnGroup.countDisplay);
     return {
@@ -157,8 +134,6 @@ export function buildLabelContent(
   }
 
   if (constructionState === IconArrayConstructionState.ConditionPositiveSubpartitioned) {
-    // Condition-positive: full composition (TP, FN).
-    // Condition-negative: count only (not yet sub-partitioned).
     const cnCount = extractCountOnly(cnGroup.countDisplay);
     return {
       region1: buildFullCompoundLabel(cpGroup, labels.conditionPositive.truePositive, labels.conditionPositive.falseNegative),
@@ -166,7 +141,6 @@ export function buildLabelContent(
     };
   }
 
-  // FullyPartitioned — both regions show full composition.
   return {
     region1: buildFullCompoundLabel(cpGroup, labels.conditionPositive.truePositive, labels.conditionPositive.falseNegative),
     region2: buildFullCompoundLabel(cnGroup, labels.conditionNegative.falsePositive, labels.conditionNegative.trueNegative),
@@ -174,17 +148,53 @@ export function buildLabelContent(
 }
 
 /**
- * Extract just the count from a countDisplay that may include composition.
- * e.g. "10 (TP: 9, FN: 1)" → "10", "990" → "990"
+ * Build label content for by-test-result grouping.
+ * Uses the compositionString from ByTestResultLabels directly.
+ * Construction state interaction: labels are always shown as fully-composed
+ * since regrouping is only meaningful when fully partitioned.
  */
+export function buildByTestResultLabelContent(
+  labels: ByTestResultLabels,
+  constructionState: IconArrayConstructionState,
+): { region1: CompoundLabelContent | null; region2: CompoundLabelContent | null } {
+  if (constructionState === IconArrayConstructionState.Unpartitioned) {
+    return { region1: null, region2: null };
+  }
+
+  const tpGroup = labels.testPositive.group;
+  const tnGroup = labels.testNegative.group;
+
+  // For early construction states, show count only (no composition).
+  if (constructionState === IconArrayConstructionState.BaseRatePartitioned) {
+    const tpCount = extractCountOnly(tpGroup.countDisplay);
+    const tnCount = extractCountOnly(tnGroup.countDisplay);
+    return {
+      region1: { mainLine: `${tpGroup.domainLabel}: ${tpCount}`, compositionLine: null },
+      region2: { mainLine: `${tnGroup.domainLabel}: ${tnCount}`, compositionLine: null },
+    };
+  }
+
+  // ConditionPositiveSubpartitioned or FullyPartitioned — show composition.
+  // The compositionString is pre-formatted by the template system (e.g. "TP: 9, FP: 89").
+  const tpCount = extractCountOnly(tpGroup.countDisplay);
+  const tnCount = extractCountOnly(tnGroup.countDisplay);
+  return {
+    region1: {
+      mainLine: `${tpGroup.domainLabel}: ${tpCount}`,
+      compositionLine: `(${labels.testPositive.compositionString})`,
+    },
+    region2: {
+      mainLine: `${tnGroup.domainLabel}: ${tnCount}`,
+      compositionLine: `(${labels.testNegative.compositionString})`,
+    },
+  };
+}
+
 function extractCountOnly(countDisplay: string): string {
   const parenIndex = countDisplay.indexOf(' (');
   return parenIndex >= 0 ? countDisplay.substring(0, parenIndex) : countDisplay;
 }
 
-/**
- * Build a full compound label with domain label, count, and composition.
- */
 function buildFullCompoundLabel(
   groupLabel: { domainLabel: string; countDisplay: string },
   subGroup1: { structuralLabel: string; countDisplay: string },
@@ -206,17 +216,17 @@ interface RegionBounds {
   maxY: number;
 }
 
-/**
- * Compute the bounding box of a set of icons (using their top-left positions + icon size).
- */
-function computeRegionBounds(icons: IconData[], iconSize: number): RegionBounds | null {
-  if (icons.length === 0) return null;
+function computeRegionBounds(
+  positions: Array<{ x: number; y: number }>,
+  iconSize: number,
+): RegionBounds | null {
+  if (positions.length === 0) return null;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const icon of icons) {
-    if (icon.x < minX) minX = icon.x;
-    if (icon.y < minY) minY = icon.y;
-    if (icon.x + iconSize > maxX) maxX = icon.x + iconSize;
-    if (icon.y + iconSize > maxY) maxY = icon.y + iconSize;
+  for (const pos of positions) {
+    if (pos.x < minX) minX = pos.x;
+    if (pos.y < minY) minY = pos.y;
+    if (pos.x + iconSize > maxX) maxX = pos.x + iconSize;
+    if (pos.y + iconSize > maxY) maxY = pos.y + iconSize;
   }
   return { minX, minY, maxX, maxY };
 }
@@ -226,6 +236,11 @@ function computeRegionBounds(icons: IconData[], iconSize: number): RegionBounds 
 const LABEL_PADDING_H = 4;
 const LABEL_PADDING_V = 2;
 const LABEL_BG_OPACITY = 0.75;
+
+// ===== Region group sets for each grouping state =====
+
+const BY_CONDITION_R1_GROUPS: ReadonlySet<IconGroup> = new Set(['truePositive', 'falseNegative']);
+const BY_TEST_RESULT_R1_GROUPS: ReadonlySet<IconGroup> = new Set(['truePositive', 'falsePositive']);
 
 // ===== Component =====
 
@@ -238,52 +253,54 @@ export function IconArray({
   groupingState = GroupingState.GroupedByCondition,
   displayMode = DisplayMode.Frequency,
 }: IconArrayProps) {
-  // Compute layout — memoised on data and dimensions.
-  const layout: LayoutResult = useMemo(() => {
-    const grouping = byConditionGrouping(regionA);
-    return computeLayout(regionA.n, width, height, grouping);
-  }, [regionA, width, height]);
+  const isByCondition = groupingState === GroupingState.GroupedByCondition;
 
-  // Get the active label set for the current display mode and grouping.
-  const activeLabels: ByConditionLabels = useMemo(() => {
+  // Compute both layouts upfront — memoised on data and dimensions.
+  const dualLayout: DualLayoutResult = useMemo(
+    () => computeDualLayout(regionA, width, height),
+    [regionA, width, height],
+  );
+
+  // Build label content based on grouping state, display mode, and construction state.
+  const labelContent = useMemo(() => {
     const modeLabels = displayMode === DisplayMode.Frequency
       ? regionB.frequency
       : regionB.probability;
-    return modeLabels.byCondition;
-  }, [regionB, displayMode]);
 
-  // Build label content based on construction state.
-  const labelContent = useMemo(
-    () => buildLabelContent(activeLabels, constructionState),
-    [activeLabels, constructionState],
-  );
+    if (isByCondition) {
+      return buildLabelContent(modeLabels.byCondition, constructionState);
+    } else {
+      return buildByTestResultLabelContent(modeLabels.byTestResult, constructionState);
+    }
+  }, [regionB, displayMode, isByCondition, constructionState]);
 
-  // Partition icons into region 1 (condition-positive) and region 2 (condition-negative)
-  // for label positioning.
-  const { region1Icons, region2Icons } = useMemo(() => {
-    const r1: IconData[] = [];
-    const r2: IconData[] = [];
-    const r1Groups = new Set(['truePositive', 'falseNegative']);
-    for (const icon of layout.icons) {
+  // Partition icons into region 1 and region 2 for label positioning,
+  // using positions from the current grouping state.
+  const { region1Positions, region2Positions } = useMemo(() => {
+    const r1Groups = isByCondition ? BY_CONDITION_R1_GROUPS : BY_TEST_RESULT_R1_GROUPS;
+    const r1: Array<{ x: number; y: number }> = [];
+    const r2: Array<{ x: number; y: number }> = [];
+    for (const icon of dualLayout.icons) {
+      const pos = isByCondition ? icon.byCondition : icon.byTestResult;
       if (r1Groups.has(icon.group)) {
-        r1.push(icon);
+        r1.push(pos);
       } else {
-        r2.push(icon);
+        r2.push(pos);
       }
     }
-    return { region1Icons: r1, region2Icons: r2 };
-  }, [layout.icons]);
+    return { region1Positions: r1, region2Positions: r2 };
+  }, [dualLayout.icons, isByCondition]);
 
-  if (layout.icons.length === 0) return null;
+  if (dualLayout.icons.length === 0) return null;
 
-  const { icons, iconSize } = layout;
+  const { icons, iconSize } = dualLayout;
   const radius = cornerRadius(iconSize);
   const fontSize = labelFontSize(iconSize);
   const fontWeight = labelFontWeight(iconSize);
 
   // Compute region bounding boxes for label positioning.
-  const r1Bounds = computeRegionBounds(region1Icons, iconSize);
-  const r2Bounds = computeRegionBounds(region2Icons, iconSize);
+  const r1Bounds = computeRegionBounds(region1Positions, iconSize);
+  const r2Bounds = computeRegionBounds(region2Positions, iconSize);
 
   // Compute label height for overlap avoidance.
   const lineHeight = fontSize * 1.3;
@@ -294,8 +311,6 @@ export function IconArray({
         : lineHeight + LABEL_PADDING_V * 2)
     : 0;
 
-  // If both regions start at similar y positions (within one label height),
-  // offset the second label below the first to avoid overlap.
   let r2YOffset = 0;
   if (r1Bounds && r2Bounds && labelContent.region1) {
     const yOverlap = Math.abs(r1Bounds.minY - r2Bounds.minY) < r1LabelHeight;
@@ -313,19 +328,22 @@ export function IconArray({
       role="img"
       aria-label={`Icon array showing ${regionA.n} icons`}
     >
-      {/* Icons */}
-      {icons.map((icon: IconData) => (
-        <rect
-          key={icon.index}
-          x={icon.x}
-          y={icon.y}
-          width={iconSize}
-          height={iconSize}
-          rx={radius}
-          ry={radius}
-          fill={resolveIconColour(icon.group, constructionState)}
-        />
-      ))}
+      {/* Icons — positioned from current grouping state's layout */}
+      {icons.map((icon: DualLayoutIcon) => {
+        const pos = isByCondition ? icon.byCondition : icon.byTestResult;
+        return (
+          <rect
+            key={icon.index}
+            x={pos.x}
+            y={pos.y}
+            width={iconSize}
+            height={iconSize}
+            rx={radius}
+            ry={radius}
+            fill={resolveIconColour(icon.group, constructionState)}
+          />
+        );
+      })}
 
       {/* Compound labels */}
       {labelContent.region1 && r1Bounds && (
@@ -363,13 +381,6 @@ interface CompoundLabelProps {
   yOffset: number;
 }
 
-/**
- * Renders a compound label overlaying the top of its region with
- * a semi-transparent background for readability.
- *
- * Positioned at the top-left of the region bounding box, overlaying the icons.
- * At high N (dense icons), labels are the primary information channel.
- */
 function CompoundLabel({ content, bounds, fontSize, fontWeight, containerWidth, yOffset }: CompoundLabelProps) {
   const lineHeight = fontSize * 1.3;
   const compositionFontSize = fontSize * 0.85;
@@ -377,11 +388,9 @@ function CompoundLabel({ content, bounds, fontSize, fontWeight, containerWidth, 
     ? lineHeight + compositionFontSize * 1.3 + LABEL_PADDING_V * 2
     : lineHeight + LABEL_PADDING_V * 2;
 
-  // Position: overlaying the top-left of the region, with optional offset for overlap avoidance.
   const x = bounds.minX;
   const y = bounds.minY + yOffset;
 
-  // Estimate text width for background rect (rough: 0.55em per char).
   const mainWidth = content.mainLine.length * fontSize * 0.55;
   const compositionWidth = content.compositionLine
     ? content.compositionLine.length * compositionFontSize * 0.55
@@ -393,7 +402,6 @@ function CompoundLabel({ content, bounds, fontSize, fontWeight, containerWidth, 
 
   return (
     <g className="compound-label">
-      {/* Semi-transparent background */}
       <rect
         x={x}
         y={y}
@@ -404,7 +412,6 @@ function CompoundLabel({ content, bounds, fontSize, fontWeight, containerWidth, 
         fill="white"
         fillOpacity={LABEL_BG_OPACITY}
       />
-      {/* Main line */}
       <text
         x={x + LABEL_PADDING_H}
         y={y + LABEL_PADDING_V + fontSize}
@@ -415,7 +422,6 @@ function CompoundLabel({ content, bounds, fontSize, fontWeight, containerWidth, 
       >
         {content.mainLine}
       </text>
-      {/* Composition line */}
       {content.compositionLine && (
         <text
           x={x + LABEL_PADDING_H}

@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layers 0 (scaffolding) and 1 (data foundation) complete. Layer 2 (static rendering) in progress — subtasks 2.1 (icon array core grid and colouring) and 2.2 (labels and construction states) complete. Next: 2.3 (second grouping layout) then 2.4 (frequency tree). First harmonisation pass done after Layer 1.
+Layers 0 (scaffolding) and 1 (data foundation) complete. Layer 2 (static rendering) in progress — subtasks 2.1 (icon array core grid and colouring), 2.2 (labels and construction states), and 2.3 (second grouping layout) complete. Next: 2.4 (frequency tree). First harmonisation pass done after Layer 1.
 
 ---
 
@@ -185,13 +185,24 @@ Gap pixel offset in Step 7 of `computeLayout` was applied based on grid column/r
 - **Status:** Complete
 - **Verify:** `npx vitest run src/components/iconArray/iconArrayLabels.test.ts` (39 tests pass), `npx vitest run` (all 272 tests pass), `npx tsc --noEmit` (zero errors), `npx vite build` (succeeds), visual verification of all 4 construction states at N=1000 mammography, N=200 mammography probability mode, N=200 spam filter frequency mode
 
-**2.3: Icon array — second grouping layout**
-- By-test-result layout computed using same algorithm with different grouping parameters
-- Both position sets stored per icon (by-condition and by-test-result positions)
-- Grouping state dimension functional (hard snap, no animation yet)
-- Label sets swap correctly between grouping states
-- **Status:** Not started
-- **Verify:** Both grouping layouts render correctly; switching between them shows correct spatial rearrangement and label content
+**2.3: Icon array — second grouping layout** ✓
+
+**What was done:**
+- `DualLayoutIcon` type and `computeDualLayout` function in `layout.ts`. Both by-condition and by-test-result layouts computed upfront via the same `computeLayout` algorithm with different `GroupingParams`. Icons matched across layouts by group + ordinal within group, producing `DualLayoutIcon[]` where each icon stores `byCondition` and `byTestResult` position sets (`IconPosition` type with `row`, `col`, `x`, `y`).
+- `buildByTestResultLabelContent` function in `IconArray.tsx`. Consumes `ByTestResultLabels` from Region B, using the pre-formatted `compositionString` fields (e.g. "TP: 9, FP: 89") directly. Supports all construction states: Unpartitioned shows no labels, BaseRatePartitioned shows count only, ConditionPositiveSubpartitioned and FullyPartitioned show full composition.
+- `IconArray` component refactored to use `computeDualLayout` instead of single `computeLayout`. The `groupingState` prop (previously accepted but unused) now controls which position set is rendered (hard snap). Labels switch between `byCondition` and `byTestResult` label sets based on grouping state. Region partitioning for label positioning adapts per grouping state (by-condition: R1=TP+FN, R2=FP+TN; by-test-result: R1=TP+FP, R2=FN+TN).
+- Demo in `App.tsx` updated with grouping state dropdown.
+- 39 unit tests in `dualLayout.test.ts`: dual layout basic properties (N icons, both position sets, valid groups, indices), group count verification (mammography + spam + all 6 scenarios), dual position divergence, consistency with single-layout `computeLayout` (by-condition and by-test-result positions match per group), by-test-result spatial arrangement (region counts, gap separation), `buildByTestResultLabelContent` (mammography reference composition strings, construction state visibility rules, probability mode, spam vocabulary), by-condition label regression, region group sets per grouping state.
+
+**Spec divergences:** None. The implementation follows the spec: both layouts from same algorithm, dual positions stored per icon, grouping state as an orthogonal dimension, compound labels consistent across grouping states using `compositionString` from Region B.
+
+**Forward-looking notes:**
+- The `DualLayoutIcon` stores `byCondition` and `byTestResult` as separate `IconPosition` objects — Layer 4 can interpolate between them with GSAP by animating `x` and `y` from one position set to the other.
+- `DualLayoutResult` exposes shared `grid`, `iconSize`, `spacing`, `firstLevelGap`, and `firstLevelAxis` from the by-condition layout. Both layouts use the same grid dimensions since they share the same N and container. If a future need arises for per-layout metadata (e.g. different gap sizes), the structure can be extended.
+- The `computeRegionBounds` function was generalised to accept `Array<{ x: number; y: number }>` instead of `IconData[]`, since it now works with `IconPosition` objects from either layout.
+
+- **Status:** Complete
+- **Verify:** `npx vitest run src/components/iconArray/dualLayout.test.ts` (39 tests pass), `npx vitest run` (all 311 tests pass), `npx tsc --noEmit` (zero errors), `npx vite build` (succeeds), visual verification of both grouping states at mammography N=1000 frequency mode, mammography N=1000 probability mode by-test-result, spam filter N=200 by-test-result
 
 **2.4: Frequency tree — full static rendering**
 - Vertical tree: root at top, two first-level nodes, four leaf nodes

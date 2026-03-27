@@ -35,6 +35,40 @@ export interface IconData {
   y: number;
 }
 
+/** Position set for one layout (used in DualLayoutIcon). */
+export interface IconPosition {
+  row: number;
+  col: number;
+  x: number;
+  y: number;
+}
+
+/**
+ * An icon with positions from both grouping layouts.
+ * The group and index are stable across layouts — only position changes.
+ * Layer 4 will interpolate between byCondition and byTestResult positions.
+ */
+export interface DualLayoutIcon {
+  /** Stable identity — index from 0 to N-1 (assigned by group ordinal). */
+  index: number;
+  /** Which of the four partition groups this icon belongs to. */
+  group: IconGroup;
+  /** Position in the by-condition layout. */
+  byCondition: IconPosition;
+  /** Position in the by-test-result layout. */
+  byTestResult: IconPosition;
+}
+
+export interface DualLayoutResult {
+  icons: DualLayoutIcon[];
+  /** Shared grid dimensions (both layouts use the same grid). */
+  grid: GridDimensions;
+  iconSize: number;
+  spacing: number;
+  firstLevelGap: number;
+  firstLevelAxis: 'horizontal' | 'vertical';
+}
+
 export interface GridDimensions {
   rows: number;
   cols: number;
@@ -332,4 +366,78 @@ export function computeLayout(
     firstLevelGap,
     firstLevelAxis: axis,
   };
+}
+
+// ===== Dual Layout (both grouping states computed upfront) =====
+
+/**
+ * Compute both by-condition and by-test-result layouts, then merge into
+ * DualLayoutIcon[] where each icon has positions from both layouts.
+ *
+ * Icons are matched across layouts by group + ordinal within group.
+ * This produces consistent pairing for animation: the k-th TP icon in the
+ * by-condition layout maps to the k-th TP icon in the by-test-result layout.
+ */
+export function computeDualLayout(
+  regionA: DataPackageRegionA,
+  width: number,
+  height: number,
+): DualLayoutResult {
+  const byCondLayout = computeLayout(regionA.n, width, height, byConditionGrouping(regionA));
+  const byTestLayout = computeLayout(regionA.n, width, height, byTestResultGrouping(regionA));
+
+  // Group icons by their group identifier for pairing.
+  const byCondByGroup = groupIconsByGroup(byCondLayout.icons);
+  const byTestByGroup = groupIconsByGroup(byTestLayout.icons);
+
+  // Merge: pair by group + ordinal within group.
+  const dualIcons: DualLayoutIcon[] = [];
+  let index = 0;
+  const groups: IconGroup[] = ['truePositive', 'falseNegative', 'falsePositive', 'trueNegative'];
+
+  for (const group of groups) {
+    const condIcons = byCondByGroup.get(group) ?? [];
+    const testIcons = byTestByGroup.get(group) ?? [];
+    // Counts must match — same data, same N.
+    for (let i = 0; i < condIcons.length; i++) {
+      dualIcons.push({
+        index: index++,
+        group,
+        byCondition: {
+          row: condIcons[i].row,
+          col: condIcons[i].col,
+          x: condIcons[i].x,
+          y: condIcons[i].y,
+        },
+        byTestResult: {
+          row: testIcons[i].row,
+          col: testIcons[i].col,
+          x: testIcons[i].x,
+          y: testIcons[i].y,
+        },
+      });
+    }
+  }
+
+  return {
+    icons: dualIcons,
+    grid: byCondLayout.grid,
+    iconSize: byCondLayout.iconSize,
+    spacing: byCondLayout.spacing,
+    firstLevelGap: byCondLayout.firstLevelGap,
+    firstLevelAxis: byCondLayout.firstLevelAxis,
+  };
+}
+
+function groupIconsByGroup(icons: IconData[]): Map<IconGroup, IconData[]> {
+  const map = new Map<IconGroup, IconData[]>();
+  for (const icon of icons) {
+    const list = map.get(icon.group);
+    if (list) {
+      list.push(icon);
+    } else {
+      map.set(icon.group, [icon]);
+    }
+  }
+  return map;
 }
