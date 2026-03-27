@@ -225,7 +225,7 @@ function computeRegionBounds(icons: IconData[], iconSize: number): RegionBounds 
 
 const LABEL_PADDING_H = 4;
 const LABEL_PADDING_V = 2;
-const LABEL_BG_OPACITY = 0.85;
+const LABEL_BG_OPACITY = 0.75;
 
 // ===== Component =====
 
