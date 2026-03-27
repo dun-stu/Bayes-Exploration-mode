@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layers 0 (scaffolding) and 1 (data foundation) complete — all three Layer 1 subtasks done (computation pipeline, template system, scenario data). First harmonisation pass done after Layer 1. Layer 2 (static rendering) is next.
+Layers 0 (scaffolding) and 1 (data foundation) complete. Layer 2 (static rendering) in progress — subtask 2.1 (icon array core grid and colouring) complete. First harmonisation pass done after Layer 1.
 
 ---
 
@@ -128,16 +128,33 @@ Components are built with only the API surface that the current layer's consumer
 
 ### Layer 2 — Static Rendering
 
-**2.1: Icon array — core grid and colouring**
-- Spatial layout algorithm: alternating-axis hierarchical subdivision
-- Grid dimension calculation from $N$ and container aspect ratio
-- Icon rendering: rounded-square SVG elements, four-group colour scheme from shared constants
-- First-level partition: axis adapts to container aspect ratio, jagged-edge handling
-- Second-level partition: row-major fill within first-level regions
-- Partition boundaries: increased spacing at first-level, colour contrast at both levels
-- Container-responsive: adapts grid dimensions, icon size, spacing to fill available space
-- **Status:** Not started
-- **Verify:** Screenshot of mammography scenario ($N = 1000$, $N_D = 10$) showing correct proportions and colour regions; also verify at $N = 100$ and $N = 200$
+**2.1: Icon array — core grid and colouring** ✓
+
+**What was done:**
+- `IconArray` React component in `src/components/iconArray/IconArray.tsx`. Renders an SVG grid of rounded-square icons coloured by partition group, consuming Region A from the data package.
+- Layout algorithm in `src/components/iconArray/layout.ts` as a pure function: `computeLayout(n, width, height, groupingParams) → LayoutResult`. Structured for reuse by subtask 2.3 (same algorithm, different grouping parameters).
+- Alternating-axis hierarchical subdivision implemented per spec: first-level splits along the container's shorter dimension; second-level uses row-major fill within each first-level region. Jagged-edge handling for non-integer boundaries.
+- Grid dimension calculation minimises empty cells while matching container aspect ratio. Multiple candidate dimensions evaluated and scored.
+- Spacing scales continuously with icon size (5% at small icons → 20% at large). Corner radius also scales (more rounding at moderate N for discreteness, less at high N for density).
+- First-level boundary has ~3.5× normal spacing as a wider gap for visual prominence.
+- Grid is centred within the container.
+- Each icon has a stable index (0 to N-1), group assignment, grid position (row, col), and pixel position — designed so subtask 2.3 can add a second position set per icon for regrouping.
+- `GroupingParams` interface abstracts the partition structure so the same algorithm works for by-condition and by-test-result layouts (builders: `byConditionGrouping`, `byTestResultGrouping`).
+- Wired into `App.tsx` replacing `FoundationDemo`. Demo provides scenario selection and N selector for visual verification. Container is measured via `ResizeObserver` for responsive sizing.
+- 24 unit tests covering: grid dimension calculation, spacing scaling, axis assignment, group count correctness (mammography + moderate N + all six scenarios), unique indices, container bounds, first-level gap > normal spacing, axis selection by container shape, region contiguity (flood-fill verification).
+
+**Spec divergences:**
+- Grid dimension computation uses a candidate-scoring approach (evaluating floor/ceil combinations of ideal cols/rows, scoring by empty cells and aspect-ratio match) rather than the simpler `s = sqrt((W*H)/N)` formula from the spec. The spec's formula doesn't account for spacing and can produce grids that overflow the container. The scoring approach reliably produces grids that fit while minimising waste. The resulting grids match the spec's intent (R×C ≈ N, C/R ≈ W/H).
+- Region-to-cell allocation counts actual occupied cells per grid line rather than assuming all lines are complete. This handles grids where rows×cols > N (incomplete last row/column). Without this, extreme aspect ratios or N values can cause region 1 to receive fewer icons than `firstRegionCount`.
+
+**Forward-looking notes:**
+- The `GroupingParams` interface and `byTestResultGrouping` builder are already exported for subtask 2.3. The by-test-result layout can be computed by calling `computeLayout` with `byTestResultGrouping(regionA)`.
+- Each icon's `IconData` has `row`, `col`, and `(x, y)` fields. Subtask 2.3 will add a second `(x, y)` pair per icon for the regrouped layout. The `index` and `group` fields are layout-independent — they stay constant across both position sets.
+- The `LayoutResult` exposes `iconSize` which can be reported to Parts 3/4 for interaction-mode decisions (per the multi-scale interaction spec).
+- The `FoundationDemo` in the previous App.tsx is no longer rendered. The KaTeX verification SVG was part of that demo — KaTeX integration remains available via `KaTeXLabel` component.
+
+- **Status:** Complete
+- **Verify:** `npx vitest run src/components/iconArray/layout.test.ts` (24 tests pass), `npx tsc --noEmit` (zero errors), `npx vite build` (succeeds), visual verification at N=1000, N=100, N=200
 
 **2.2: Icon array — labels and construction states**
 - Compound label system: first-level labels showing group total + sub-group composition

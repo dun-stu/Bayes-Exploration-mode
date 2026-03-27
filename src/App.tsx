@@ -1,68 +1,94 @@
+import { useRef, useState, useEffect } from 'react';
 import { AppStateProvider, useAppState } from './state';
-import { COLORS, ICON_COLORS } from './constants';
-import { KaTeXLabel } from './components/KaTeXLabel';
-import { DisplayMode } from './types';
+import { SCENARIOS } from './data/scenarios';
+import { IconArray } from './components/iconArray';
 
 /**
- * Temporary demo component — verifies that the foundation layer works:
- * context provider, colour constants, types, and KaTeX rendering in SVG.
- * Will be replaced by the exploration mode layout in subtask 3.1.
+ * Temporary demo layout for subtask 2.1 — icon array verification.
+ * Provides scenario selection and N control to test the icon array at different
+ * parameter profiles. Will be replaced by the exploration mode layout in Layer 3.
  */
-function FoundationDemo() {
-  const { parameters, dispatch } = useAppState();
+function IconArrayDemo() {
+  const { parameters, dispatch, dataPackage } = useAppState();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+  // Measure the container and update on resize.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      setContainerSize({ width: rect.width, height: rect.height });
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div style={{ padding: 24, fontFamily: 'system-ui, sans-serif' }}>
-      <h2>Subtask 0.1 — Foundation Verification</h2>
+    <div style={{ padding: 16, fontFamily: 'system-ui, sans-serif', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Controls */}
+      <div style={{ marginBottom: 12, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+        <label>
+          Scenario:{' '}
+          <select
+            value={parameters.scenarioId ?? ''}
+            onChange={(e) => {
+              const scenario = SCENARIOS.find(s => s.id === e.target.value);
+              if (scenario) {
+                dispatch({ type: 'SET_SCENARIO', scenario });
+              }
+            }}
+          >
+            <option value="" disabled>Select scenario</option>
+            {SCENARIOS.map(s => (
+              <option key={s.id} value={s.id}>{s.name} (N={s.n})</option>
+            ))}
+          </select>
+        </label>
 
-      {/* State architecture test */}
-      <section style={{ marginBottom: 24 }}>
-        <h3>State Architecture</h3>
-        <p>
-          N = {parameters.n}, Base rate = {parameters.baseRate},
-          Sensitivity = {parameters.sensitivity}, FPR = {parameters.fpr}
-        </p>
-        <p>Display mode: {parameters.displayMode}</p>
-        <button onClick={() =>
-          dispatch({
-            type: 'SET_DISPLAY_MODE',
-            mode: parameters.displayMode === DisplayMode.Frequency
-              ? DisplayMode.Probability
-              : DisplayMode.Frequency,
-          })
-        }>
-          Toggle display mode
-        </button>
-      </section>
+        <label>
+          N:{' '}
+          <select
+            value={parameters.n}
+            onChange={(e) => dispatch({ type: 'SET_N', value: Number(e.target.value) })}
+          >
+            {[100, 200, 500, 1000].map(v => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
+        </label>
 
-      {/* Colour scheme test */}
-      <section style={{ marginBottom: 24 }}>
-        <h3>Colour Scheme</h3>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {Object.entries(ICON_COLORS).map(([group, colour]) => (
-            <div key={group} style={{ textAlign: 'center' }}>
-              <div style={{
-                width: 48, height: 48, borderRadius: 6,
-                backgroundColor: colour, border: '1px solid #ccc',
-              }} />
-              <small>{group}</small>
-            </div>
-          ))}
-        </div>
-        <p style={{ marginTop: 8, fontSize: 12, color: COLORS.text.secondary }}>
-          Background: {COLORS.background} | Branch: {COLORS.branch}
-        </p>
-      </section>
+        <span style={{ fontSize: 13, color: '#616161' }}>
+          N_D={dataPackage.regionA.nD}, TP={dataPackage.regionA.nTP},
+          FN={dataPackage.regionA.nFN}, FP={dataPackage.regionA.nFP},
+          TN={dataPackage.regionA.nTN}
+        </span>
+      </div>
 
-      {/* KaTeX in SVG test */}
-      <section>
-        <h3>KaTeX in SVG</h3>
-        <svg width={500} height={120} style={{ border: '1px solid #eee', background: '#fff' }}>
-          <KaTeXLabel latex={String.raw`P(D \mid T^+) \approx 0.092`} x={10} y={10} width={300} height={40} />
-          <KaTeXLabel latex={String.raw`P(T^+ \mid D) = 0.90`} x={10} y={50} width={300} height={40} />
-          <KaTeXLabel latex={String.raw`\frac{N_{TP}}{N_{T^+}} = \frac{9}{98}`} x={10} y={80} width={300} height={40} />
-        </svg>
-      </section>
+      {/* Icon array container — fills remaining space */}
+      <div
+        ref={containerRef}
+        style={{
+          flex: 1,
+          minHeight: 200,
+          border: '1px solid #e0e0e0',
+          borderRadius: 4,
+          background: '#FAFAFA',
+        }}
+      >
+        {containerSize.width > 0 && containerSize.height > 0 && (
+          <IconArray
+            regionA={dataPackage.regionA}
+            width={containerSize.width}
+            height={containerSize.height}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -70,7 +96,7 @@ function FoundationDemo() {
 function App() {
   return (
     <AppStateProvider>
-      <FoundationDemo />
+      <IconArrayDemo />
     </AppStateProvider>
   );
 }
