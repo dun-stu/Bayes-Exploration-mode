@@ -25,7 +25,7 @@ Update `docs/development_companion.md` with:
 
 Do **not** record routine debugging iteration. Record **outcomes**, not process — with one exception (see below).
 
-**After all completion steps are done:** Stop and ask the user before proceeding to the next subtask. The next subtask requires a planning thread session to curate the relevant spec extract and formulate the prompt — do not pick up the next subtask autonomously. Tell the user the subtask is complete and that the next step is to return to the planning thread for the next subtask's prompt.
+**After all completion steps are done:** Commit and push the changes. Each completed subtask is a clean, verified unit of work — the remote should always reflect the latest confirmed state. Then stop and ask the user before proceeding to the next subtask. The next subtask requires a planning thread session to curate the relevant spec extract and formulate the prompt — do not pick up the next subtask autonomously. Tell the user the subtask is complete and that the next step is to return to the planning thread for the next subtask's prompt.
 
 ---
 

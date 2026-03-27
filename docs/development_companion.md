@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layer 0 (scaffolding) complete. Layer 1 in progress — computation pipeline (1.1) and template system (1.2) done, scenario data (1.3) next.
+Layers 0 (scaffolding) and 1 (data foundation) complete — all three Layer 1 subtasks done (computation pipeline, template system, scenario data). First harmonisation pass done after Layer 1. Layer 2 (static rendering) is next.
 
 ---
 
@@ -109,12 +109,20 @@ Components are built with only the API surface that the current layer's consumer
 - **Status:** Complete
 - **Verify:** `npx vitest run src/computation/computeRegionB.test.ts` (62 tests pass), `npx tsc --noEmit` (zero errors), `npx vite build` (succeeds)
 
-**1.3: Scenario data**
-- All 6 scenarios coded as data objects conforming to the schema: mammography, COVID antigen, blood donation, spam filter, factory inspection, drug screening
-- All domain vocabulary fields populated (including singular forms, relative pronouns, test action verbs, and the six new schema fields from template verification)
-- Parameter profiles as specified (0.5%–25% base rate, 80%–99% sensitivity, 1%–10% FPR)
-- **Status:** Not started
-- **Verify:** Schema validation passes; computation pipeline produces correct counts for each scenario's author-specified $N$
+**1.3: Scenario data** ✓
+
+**What was done:**
+- All 6 scenarios coded as `ScenarioDefinition` objects in `src/data/scenarios.ts`: mammography, covid_antigen, blood_donation, spam_filter, factory_inspection, drug_screening.
+- All domain vocabulary fields populated (plural forms, singular/grammatical forms, relative pronouns, test action verbs, base rate domain names). Optional fields (`sensitivityDomainName`, `fprDomainName`, `specificity`) included only where specified by the spec.
+- Exported individually (named constants), as a `SCENARIOS` array, and with a `getScenarioById` lookup helper.
+- 118 unit tests in `src/data/scenarios.test.ts`: collection integrity (6 unique ids/names), all required fields non-empty, numerical parameter validity, specificity/FPR consistency, integer verification for all 6 scenarios via `computeRegionA` (matching spec's integer verification tables exactly), domain-specific optional field checks.
+
+**Spec divergences:** None. All data matches the spec exactly.
+
+**Forward-looking notes:** None — this is a pure data subtask with no architectural implications.
+
+- **Status:** Complete
+- **Verify:** `npx vitest run src/data/scenarios.test.ts` (118 tests pass), `npx tsc --noEmit` (zero errors), `npx vitest run` (all 205 tests pass)
 
 ---
 
@@ -276,4 +284,13 @@ Part 4 is not yet specified. Its design depends on the exploration mode being bu
 <!-- Records when harmonisation passes were done and what was updated. -->
 <!-- Format: date, what was harmonised, brief summary of changes to Implementation Details doc. -->
 
-*To be populated as harmonisation passes occur.*
+**2026-03-26 — Post-Layer 1 harmonisation.** Reconciled accumulated spec divergences from subtasks 0.1, 1.1, and 1.2 with the Implementation Details doc. Changes made:
+
+1. **Step 1 defensive rounding:** Added implementation note to the computation pipeline (Step 1) documenting that `standardRound` is applied defensively to the first-level partition multiplication, guarding against floating-point edge cases. No functional divergence from spec.
+2. **Output 4 degenerate wording:** Updated the Output 4 degenerate case from "Nobody [test_positive_name]" to "No [population_name] [test_positive_name]" — making it consistent with the already-updated Output 9 wording (which was corrected during the Part 5 template verification pass).
+3. **Decimal formatting precision:** Added implementation note to the number formatting convention section specifying 3 decimal places for values ≥ 0.01 (necessary for values like 0.901, 0.089, 0.098), with trailing-zero stripping to minimum 2 characters. Percentage formatting uses 1 decimal place.
+4. **Outputs 9/10 as standalone functions:** Added note to the template system summary that Outputs 9 (degenerate messages) and 10 (glossary entries) are exported as standalone helper functions rather than embedded in Region B's type structure, since Region B doesn't have fields for them.
+5. **KaTeX via foreignObject:** Added new subsection to the Tech Stack Decision documenting the resolved approach: KaTeX HTML output wrapped in SVG `<foreignObject>` elements. This was left open in the spec and resolved during subtask 0.1.
+
+Also updated `Our Plan + Status.md`:
+- Updated "Next steps" paragraph and status summary to reflect that coding has begun and Layers 0–1 are complete.
