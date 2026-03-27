@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layers 0 (scaffolding) and 1 (data foundation) complete. Layer 2 (static rendering) in progress — subtask 2.1 (icon array core grid and colouring) complete. First harmonisation pass done after Layer 1.
+Layers 0 (scaffolding) and 1 (data foundation) complete. Layer 2 (static rendering) in progress — subtasks 2.1 (icon array core grid and colouring) and 2.2 (labels and construction states) complete. Next: 2.3 (second grouping layout) then 2.4 (frequency tree). First harmonisation pass done after Layer 1.
 
 ---
 
@@ -159,13 +159,31 @@ Components are built with only the API surface that the current layer's consumer
 **Post-completion fix — first-level gap not separating regions at jagged boundary:**
 Gap pixel offset in Step 7 of `computeLayout` was applied based on grid column/row position (`icon.col >= boundaryLine`), but the region boundary is jagged when `firstRegionCount` doesn't divide evenly by the cross-axis size. Icons from both R1 and R2 on the boundary line got the same offset, so R2 bled to the wrong side of the gap. Fixed by tracking region membership via `Set<number>` and applying the gap offset based on membership. Added 4 pixel-space gap separation tests (all 6 scenarios, both groupings) — the existing contiguity test used grid coordinates and was structurally blind to pixel-space issues.
 
-**2.2: Icon array — labels and construction states**
-- Compound label system: first-level labels showing group total + sub-group composition
-- Label prominence scaling with $N$ (secondary at moderate $N$, primary at high $N$)
-- Labels consume real template output from Layer 1 (both display modes)
-- All five construction states rendering correctly: `unpartitioned`, `base-rate-partitioned`, `condition-positive-subpartitioned`, `fully-partitioned`, `regrouped-by-test-result`
-- **Status:** Not started
-- **Verify:** Screenshots at different $N$ values showing labels; each construction state producing correct partial view
+**2.2: Icon array — labels and construction states** ✓
+
+**What was done:**
+- Construction state colouring implemented via `resolveIconColour` pure function. Progressive colouring sequence: `Unpartitioned` (all neutral grey) → `BaseRatePartitioned` (warm/cool family colours, no shade variation) → `ConditionPositiveSubpartitioned` (warm region shows TP/FN shades, cool region uniform) → `FullyPartitioned` (all four groups distinct).
+- Compound first-level label system consuming Region B. Two labels per state, each showing domain label + count as the main line, with optional sub-group composition in parentheses as a secondary line. Labels are assembled from `ByConditionLabels` in the data package.
+- Label content adapts per construction state: `Unpartitioned` shows no labels; `BaseRatePartitioned` shows count only (no composition); `ConditionPositiveSubpartitioned` shows full composition for condition-positive, count-only for condition-negative; `FullyPartitioned` shows full composition for both.
+- Label prominence scaling: font size (10–14px) and font weight (500–700) scale inversely with icon size — at high N (small icons), labels are larger and bolder as the primary information channel; at moderate N (large icons), labels are smaller and secondary.
+- Labels overlay the top of their region with a semi-transparent white background for readability. Overlap avoidance: when both regions share similar top positions (e.g., mammography at N=1000 where the condition-positive region is just one column), the second label is offset below the first.
+- Display mode support: component accepts `displayMode` prop and renders the corresponding label set from Region B (frequency or probability). Both modes verified working.
+- Props expanded: `regionB: DataPackageRegionB` and `displayMode: DisplayMode` added alongside existing `constructionState` and `groupingState`.
+- Demo in `App.tsx` updated with construction state selector and display mode toggle for visual verification across all states and modes.
+- 39 unit tests in `src/components/iconArray/iconArrayLabels.test.ts`: construction state colour mapping (all 4 states × 4 groups, progressive distinct-colour-count verification), label content assembly (mammography reference scenario exact strings, per-state visibility rules), probability mode labels, spam scenario vocabulary substitution, font size / weight scaling (range bounds, continuity, inverse relationship).
+
+**Spec divergences:**
+- Label positioning uses overlay (inside region bounding box) rather than adjacent/above positioning. The spec says "positioned at the edges of or overlaying the first-level regions" — overlaying was chosen because positioning above fails when regions are at the SVG boundary (as mammography's tiny condition-positive region always is). This matches the spec's "semi-transparent background for readability" design for high-N overlay.
+- Label overlap avoidance for extreme proportion cases (e.g., 10/990 split at mammography) is an implementation detail not specified — the spec's "two labels at predictable locations" assumed the two regions would have distinct label positions, which isn't true when both regions start at the same y coordinate. The offset solution maintains readability without adding visual complexity.
+
+**Forward-looking notes:**
+- The `resolveIconColour` function is exported and pure — subtask 2.3 can reuse it unchanged (construction state colouring is independent of grouping state).
+- `buildLabelContent` currently works only with `ByConditionLabels`. Subtask 2.3 will need an analogous function for `ByTestResultLabels`, or a unified function parameterised by label type.
+- The `CompoundLabel` sub-component accepts generic content (`mainLine` + optional `compositionLine`) — it's reusable for by-test-result labels with no changes.
+- The overlap avoidance logic checks both y-proximity and x-overlap between region bounding boxes. For by-test-result grouping (subtask 2.3), the regions will have different spatial arrangements, so the overlap detection should still work correctly.
+
+- **Status:** Complete
+- **Verify:** `npx vitest run src/components/iconArray/iconArrayLabels.test.ts` (39 tests pass), `npx vitest run` (all 272 tests pass), `npx tsc --noEmit` (zero errors), `npx vite build` (succeeds), visual verification of all 4 construction states at N=1000 mammography, N=200 mammography probability mode, N=200 spam filter frequency mode
 
 **2.3: Icon array — second grouping layout**
 - By-test-result layout computed using same algorithm with different grouping parameters

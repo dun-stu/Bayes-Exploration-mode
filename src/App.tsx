@@ -2,18 +2,20 @@ import { useRef, useState, useEffect } from 'react';
 import { AppStateProvider, useAppState } from './state';
 import { SCENARIOS } from './data/scenarios';
 import { IconArray } from './components/iconArray';
+import { IconArrayConstructionState, DisplayMode } from './types';
 
 /**
- * Temporary demo layout for subtask 2.1 — icon array verification.
- * Provides scenario selection and N control to test the icon array at different
- * parameter profiles. Will be replaced by the exploration mode layout in Layer 3.
+ * Temporary demo layout for subtasks 2.1–2.2 — icon array verification.
+ * Provides scenario selection, N control, construction state selector,
+ * and display mode toggle. Will be replaced by exploration mode layout in Layer 3.
  */
 function IconArrayDemo() {
   const { parameters, dispatch, dataPackage } = useAppState();
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [constructionState, setConstructionState] = useState(IconArrayConstructionState.FullyPartitioned);
+  const [displayMode, setDisplayMode] = useState(DisplayMode.Frequency);
 
-  // Measure the container and update on resize.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -63,6 +65,30 @@ function IconArrayDemo() {
           </select>
         </label>
 
+        <label>
+          State:{' '}
+          <select
+            value={constructionState}
+            onChange={(e) => setConstructionState(e.target.value as IconArrayConstructionState)}
+          >
+            <option value={IconArrayConstructionState.Unpartitioned}>Unpartitioned</option>
+            <option value={IconArrayConstructionState.BaseRatePartitioned}>Base Rate</option>
+            <option value={IconArrayConstructionState.ConditionPositiveSubpartitioned}>Cond+ Sub</option>
+            <option value={IconArrayConstructionState.FullyPartitioned}>Fully Partitioned</option>
+          </select>
+        </label>
+
+        <label>
+          Mode:{' '}
+          <select
+            value={displayMode}
+            onChange={(e) => setDisplayMode(e.target.value as DisplayMode)}
+          >
+            <option value={DisplayMode.Frequency}>Frequency</option>
+            <option value={DisplayMode.Probability}>Probability</option>
+          </select>
+        </label>
+
         <span style={{ fontSize: 13, color: '#616161' }}>
           N_D={dataPackage.regionA.nD}, TP={dataPackage.regionA.nTP},
           FN={dataPackage.regionA.nFN}, FP={dataPackage.regionA.nFP},
@@ -84,8 +110,11 @@ function IconArrayDemo() {
         {containerSize.width > 0 && containerSize.height > 0 && (
           <IconArray
             regionA={dataPackage.regionA}
+            regionB={dataPackage.regionB}
             width={containerSize.width}
             height={containerSize.height}
+            constructionState={constructionState}
+            displayMode={displayMode}
           />
         )}
       </div>
