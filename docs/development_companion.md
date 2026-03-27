@@ -303,6 +303,7 @@ Gap pixel offset in Step 7 of `computeLayout` was applied based on grid column/r
 - Control styling refinement
 - Label text fine-tuning (guided by strand b wording principles in context)
 - First-time-user affordances (if needed)
+- Hover tooltips on compound labels — vocabulary bridging for structural abbreviations (evaluate once assembled UI shows whether gap is felt; see Implementation Details building-phase note)
 - Bayes' rule formula toggle (click-to-reveal, probability mode only)
 - Glossary component (could-cut)
 - **Status:** Not started
