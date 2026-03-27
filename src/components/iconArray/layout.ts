@@ -279,6 +279,7 @@ export function computeLayout(
   // --- Step 6: Assign groups (second-level partition via row-major fill) ---
   const [g1Primary, g1Secondary, g2Primary, g2Secondary] = grouping.groups;
   const icons: IconData[] = [];
+  const region2Indices = new Set<number>();
   let globalIndex = 0;
 
   for (let i = 0; i < region1Cells.length; i++) {
@@ -293,8 +294,10 @@ export function computeLayout(
 
   for (let i = 0; i < region2Cells.length; i++) {
     const cell = region2Cells[i];
+    const idx = globalIndex++;
+    region2Indices.add(idx);
     icons.push({
-      index: globalIndex++,
+      index: idx,
       group: i < grouping.secondRegionPrimaryCount ? g2Primary : g2Secondary,
       row: cell.row, col: cell.col,
       x: 0, y: 0,
@@ -302,22 +305,22 @@ export function computeLayout(
   }
 
   // --- Step 7: Pixel positions ---
-  const boundaryLine = r1Remainder > 0 ? r1FullLines + 1 : r1FullLines;
-
+  // Gap offset is applied based on region membership, not grid position.
+  // This ensures the gap separates R1 from R2 even at the jagged boundary,
+  // where a single grid line may contain icons from both regions.
   const gridPixelW = grid.cols * pitch + (axis === 'horizontal' ? firstLevelGapExtra : 0);
   const gridPixelH = grid.rows * pitch + (axis === 'vertical' ? firstLevelGapExtra : 0);
   const offsetX = Math.max(0, (width - gridPixelW) / 2);
   const offsetY = Math.max(0, (height - gridPixelH) / 2);
 
   for (const icon of icons) {
+    const gapShift = region2Indices.has(icon.index) ? firstLevelGapExtra : 0;
     if (axis === 'horizontal') {
-      const pastBoundary = icon.col >= boundaryLine ? firstLevelGapExtra : 0;
-      icon.x = offsetX + icon.col * pitch + pastBoundary;
+      icon.x = offsetX + icon.col * pitch + gapShift;
       icon.y = offsetY + icon.row * pitch;
     } else {
-      const pastBoundary = icon.row >= boundaryLine ? firstLevelGapExtra : 0;
       icon.x = offsetX + icon.col * pitch;
-      icon.y = offsetY + icon.row * pitch + pastBoundary;
+      icon.y = offsetY + icon.row * pitch + gapShift;
     }
   }
 

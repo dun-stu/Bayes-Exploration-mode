@@ -226,6 +226,89 @@ describe('computeLayout — region contiguity', () => {
   });
 });
 
+// ===== Gap Separation (pixel space) =====
+
+describe('computeLayout — gap separates regions in pixel space', () => {
+  /**
+   * Verify that no R2 icon shares the same primary-axis position as an R1 icon
+   * without the gap between them. For horizontal axis, within each row, all R1
+   * icons must have smaller x than all R2 icons, with a gap between.
+   * For vertical axis, within each column, all R1 icons must have smaller y.
+   */
+  function expectGapSeparatesRegions(layout: ReturnType<typeof computeLayout>, grouping: ReturnType<typeof byConditionGrouping>) {
+    const r1Groups = new Set([grouping.groups[0], grouping.groups[1]]);
+    const r1Icons = layout.icons.filter(i => r1Groups.has(i.group));
+    const r2Icons = layout.icons.filter(i => !r1Groups.has(i.group));
+
+    if (r1Icons.length === 0 || r2Icons.length === 0) return;
+
+    if (layout.firstLevelAxis === 'horizontal') {
+      // Within each row, max R1 x must be less than min R2 x
+      const rows = new Set(layout.icons.map(i => i.row));
+      for (const row of rows) {
+        const r1InRow = r1Icons.filter(i => i.row === row);
+        const r2InRow = r2Icons.filter(i => i.row === row);
+        if (r1InRow.length === 0 || r2InRow.length === 0) continue;
+        const maxR1x = Math.max(...r1InRow.map(i => i.x));
+        const minR2x = Math.min(...r2InRow.map(i => i.x));
+        expect(minR2x).toBeGreaterThan(maxR1x + layout.iconSize);
+      }
+    } else {
+      // Within each column, max R1 y must be less than min R2 y
+      const cols = new Set(layout.icons.map(i => i.col));
+      for (const col of cols) {
+        const r1InCol = r1Icons.filter(i => i.col === col);
+        const r2InCol = r2Icons.filter(i => i.col === col);
+        if (r1InCol.length === 0 || r2InCol.length === 0) continue;
+        const maxR1y = Math.max(...r1InCol.map(i => i.y));
+        const minR2y = Math.min(...r2InCol.map(i => i.y));
+        expect(minR2y).toBeGreaterThan(maxR1y + layout.iconSize);
+      }
+    }
+  }
+
+  it('mammography N=1000 (low base rate, jagged boundary)', () => {
+    const rA = regionA(1000, 0.01, 0.90, 0.09);
+    const grouping = byConditionGrouping(rA);
+    const layout = computeLayout(1000, 660, 720, grouping);
+    expectGapSeparatesRegions(layout, grouping);
+  });
+
+  it('mammography N=100 (very small nD=1)', () => {
+    const rA = regionA(100, 0.01, 0.90, 0.09);
+    const grouping = byConditionGrouping(rA);
+    const layout = computeLayout(100, 660, 720, grouping);
+    expectGapSeparatesRegions(layout, grouping);
+  });
+
+  it('drug screening N=200 (moderate base rate, clean boundary)', () => {
+    const rA = regionA(200, 0.05, 0.80, 0.10);
+    const grouping = byConditionGrouping(rA);
+    const layout = computeLayout(200, 800, 600, grouping);
+    expectGapSeparatesRegions(layout, grouping);
+  });
+
+  it('all scenarios with both groupings', () => {
+    const scenarios = [
+      { n: 1000, br: 0.01, sens: 0.90, fpr: 0.09 },
+      { n: 500, br: 0.04, sens: 0.70, fpr: 0.03 },
+      { n: 1000, br: 0.005, sens: 0.999, fpr: 0.002 },
+      { n: 200, br: 0.10, sens: 0.95, fpr: 0.05 },
+      { n: 500, br: 0.02, sens: 0.85, fpr: 0.03 },
+      { n: 200, br: 0.05, sens: 0.80, fpr: 0.10 },
+    ];
+
+    for (const s of scenarios) {
+      const rA = regionA(s.n, s.br, s.sens, s.fpr);
+      for (const groupingFn of [byConditionGrouping, byTestResultGrouping]) {
+        const grouping = groupingFn(rA);
+        const layout = computeLayout(s.n, 660, 720, grouping);
+        expectGapSeparatesRegions(layout, grouping);
+      }
+    }
+  });
+});
+
 // ===== Helpers =====
 
 function countGroups(groups: IconGroup[]): Record<IconGroup, number> {
