@@ -105,3 +105,14 @@ When judging whether a development event is report-relevant, ask:
 - **Achievement:** Does this contribute to meeting the project aims convincingly?
 
 If the answer to any of these is yes, flag it. If borderline, consult the user.
+
+### Visual material and the rubric
+
+The rubric values visual material in two specific ways:
+
+- **Presentation (3.5):** "Suitable figures and tables," "images of suitable resolution or scalable graphics, figures of a reasonable size." These are polished report figures — architecture diagrams, annotated screenshots, evaluation result tables — created deliberately to explain the work to the reader.
+- **Technical Quality (3.3):** "Architecture diagrams, UML, database schemas, algorithms, mathematics." These are explanatory artefacts designed for the report, not raw development captures.
+
+Development-time screenshots are useful as *raw material* for later report figures, but are not themselves what the rubric assesses. The report needs figures that illustrate specific points with annotation and captioning. Save development screenshots when they capture states that would be hard to reproduce later (key visual states, before/after pairs, edge case displays), but don't treat routine verification screenshots as report assets.
+
+Technical challenges are conveyed through *written reasoning* in the report (what the problem was, alternatives considered, why the solution works), not through screenshots of broken states. The two concerns — visual material and technical challenges — are largely independent.

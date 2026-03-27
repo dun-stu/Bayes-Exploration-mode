@@ -37,8 +37,19 @@ If you identify an issue whose resolution might affect components beyond the cur
 ### Report-relevant technical challenges
 If an iteration involved a genuine technical challenge — not routine debugging, but something where the difficulty encountered and the reasoning to overcome it were substantive — flag it as potentially worth recording in the companion doc. Use `docs/rubric_reference.md` to judge relevance: the rubric rewards "difficulties overcome" (Scale), "key decisions highlighted and justified" (Technical Quality), and demonstrations of understanding through problem-solving. If borderline, ask the user whether it's worth noting rather than deciding silently.
 
-### Report-relevant screenshots
-When requesting verification screenshots, note if a particular screenshot might also be worth saving for the report — e.g., it shows the visualisation in a state that demonstrates a key feature, a design decision, or a before/after comparison. Suggest the user save it to a designated folder.
+### Screenshots worth saving
+
+The rubric assesses visual material in two places: **Presentation** (3.5) rewards "suitable figures and tables" with "images of suitable resolution or scalable graphics"; **Technical Quality** (3.3) rewards "architecture diagrams, UML, database schemas, algorithms, mathematics." Both refer to polished report figures, not raw development captures. The screencast (Section 4) needs live demonstration, not screenshots.
+
+However, development-time captures are useful *raw material* for later report figures — especially states that are hard to reproduce later, or before/after pairs. When requesting verification, flag screenshots worth saving if they show:
+
+- **Key visual states of the tool** that could become annotated report figures (e.g., the icon array at N=1000 showing base-rate salience, the tree with cross-branch combination, regrouped vs ungrouped layouts). These will need annotation and captioning later, but the raw capture is only available now.
+- **Before/after pairs** if a visual problem is solved — the "before" can only be captured in the moment. Worth saving even if it may not make the report.
+- **Edge case displays** (degenerate states, extreme parameter values) that demonstrate the system handles boundary conditions — useful for evaluation figures.
+
+Do **not** routinely save every verification screenshot. Most verification screenshots confirm "it works" and have no report value. Save only those that could plausibly illustrate a specific point in the Technical Quality, Evaluation, or Presentation sections.
+
+Suggest the user save to a designated folder (e.g., `report-assets/`) with a brief filename indicating what it shows.
 
 ---
 
