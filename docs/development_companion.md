@@ -154,7 +154,10 @@ Components are built with only the API surface that the current layer's consumer
 - The `FoundationDemo` in the previous App.tsx is no longer rendered. The KaTeX verification SVG was part of that demo — KaTeX integration remains available via `KaTeXLabel` component.
 
 - **Status:** Complete
-- **Verify:** `npx vitest run src/components/iconArray/layout.test.ts` (24 tests pass), `npx tsc --noEmit` (zero errors), `npx vite build` (succeeds), visual verification at N=1000, N=100, N=200
+- **Verify:** `npx vitest run src/components/iconArray/layout.test.ts` (28 tests pass), `npx tsc --noEmit` (zero errors), `npx vite build` (succeeds), visual verification at N=1000, N=100, N=200
+
+**Post-completion fix — first-level gap not separating regions at jagged boundary:**
+Gap pixel offset in Step 7 of `computeLayout` was applied based on grid column/row position (`icon.col >= boundaryLine`), but the region boundary is jagged when `firstRegionCount` doesn't divide evenly by the cross-axis size. Icons from both R1 and R2 on the boundary line got the same offset, so R2 bled to the wrong side of the gap. Fixed by tracking region membership via `Set<number>` and applying the gap offset based on membership. Added 4 pixel-space gap separation tests (all 6 scenarios, both groupings) — the existing contiguity test used grid coordinates and was structurally blind to pixel-space issues.
 
 **2.2: Icon array — labels and construction states**
 - Compound label system: first-level labels showing group total + sub-group composition
