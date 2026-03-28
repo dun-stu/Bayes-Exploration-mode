@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layers 0–2 complete. Layer 3 in progress — subtasks 3.1 and 3.2 complete. The exploration mode is now a working integrated tool: icon array and frequency tree render live in the main area, updating immediately on parameter changes. Format selector switches between components, regrouping toggle (hard snap) switches the icon array between by-condition and by-test-result layouts. Tree displays domain labels above root and first-level nodes. All six scenarios, both display modes, and both grouping states verified working. Next: subtask 3.3 (full display mode integration — verifying all text layers switch correctly).
+Layers 0–3 complete. The exploration mode is a fully working integrated tool: sidebar with parameter controls (Y2 format in frequency mode, KaTeX probability notation in probability mode, Bayesian parentheticals), top strip with scenario selector and display mode toggle, and main area with icon array and frequency tree. Display mode toggle switches all three persistent visibility layers simultaneously (question text, parameter labels, visualisation labels). Format selector switches between icon array and frequency tree, regrouping toggle (hard snap) switches between by-condition and by-test-result layouts. Tree displays domain labels above root and first-level nodes, cross-branch combination persistently shown. All six scenarios, both display modes, both formats, and both grouping states verified working across N values 100–1000. Next: Layer 4 (animation — regrouping, tree construction, format-switching cross-fade, animation discipline during live interaction).
 
 ---
 
@@ -300,12 +300,23 @@ Gap pixel offset in Step 7 of `computeLayout` was applied based on grid column/r
 - **Status:** Complete
 - **Verify:** Drag a slider → visualisation updates immediately; switch format → other component appears with regrouping toggle showing/hiding; load different scenario → all text, parameters, and visualisation update; regrouping toggle switches icon array layout; tree shows domain labels above root and first-level nodes; cross-branch combination visible on tree; both display modes work across all components
 
-**3.3: Full display mode integration**
-- Part-3-facing template outputs integrated: question text, problem statement, parameter display strings in their UI positions
-- Display mode toggle switches all three layers simultaneously (hard swap — cross-fade animation comes in Layer 4)
-- Parameter panel shows Y2 format in frequency mode, probability notation in probability mode
-- Bayesian parentheticals visible in parameter labels
-- **Status:** Not started
+**3.3: Full display mode integration** ✓
+
+**What was done:**
+- No new code required — all display mode integration was implemented as part of subtasks 3.1 and 3.2. Subtask 3.1 built the TopStrip (question text and problem statement switching between frequency and probability framing, with KaTeX rendering for probability-mode notation lines) and the Sidebar (parameter display strings in Y2 format for frequency mode and KaTeX probability notation for probability mode, including Bayesian parentheticals). Subtask 3.2 wired display mode through to both visualisation components.
+- This subtask was a **verification and close-out pass** confirming all three persistent visibility layers switch correctly on display mode toggle, across all six scenarios, both formats (icon array and frequency tree), both grouping states, and multiple N values.
+
+**Verification results:**
+- Layer 1 (Top strip): Question text and problem statement switch correctly between frequency framing and probability framing (with KaTeX notation line) for all scenarios verified (mammography, spam filter, blood donation, factory inspection, drug screening, COVID antigen).
+- Layer 2 (Sidebar): Parameters show Y2 format with Bayesian parentheticals in frequency mode ("Base rate (prior): 1% — 10 out of 1,000 have the disease") and KaTeX probability notation in probability mode ("P(D) = 0.01" with "Prior (prevalence)"). Derived results switch between frequency counts and probability values. Domain-specific label names (e.g., "Detection rate (likelihood)" for spam filter) display correctly.
+- Layer 3 (Visualisation): Icon array compound labels switch between count/percentage strings and probability strings. Frequency tree node labels, branch labels, and cross-branch combination labels switch between plain text and KaTeX. Both formats verified in both modes.
+- Visual sweep across scenarios: no label clipping, overflow, or layout issues found at N=100, 200, 500, 1000. Extreme proportion cases (mammography 1/99 at N=100, 10/990 at N=1000) handled correctly with label overlap avoidance.
+
+**Spec divergences:** None — no new code was written.
+
+**Forward-looking notes:** None — Layer 3 is now complete.
+
+- **Status:** Complete
 - **Verify:** Toggle between frequency and probability mode; all text across all three layers changes correctly; parameter panel formatting correct in both modes
 
 ---
