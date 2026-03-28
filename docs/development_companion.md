@@ -390,6 +390,7 @@ Gap pixel offset in Step 7 of `computeLayout` was applied based on grid column/r
 - Hover tooltips on compound labels — vocabulary bridging for structural abbreviations (evaluate once assembled UI shows whether gap is felt; see Implementation Details building-phase note)
 - Bayes' rule formula toggle (click-to-reveal, probability mode only)
 - Glossary component (could-cut)
+- **Tree leaf domain labels — evaluate whether leaves should show "Test positive"/"Test negative" above-node labels.** Currently leaf nodes have no domain labels (branch labels carry the test-result information via structural terms like "Sensitivity: 90%"). The question is whether adding explicit test-result domain labels aids novice comprehension (direct labelling reduces cognitive load per graph comprehension literature — Carpenter & Shah 1998) or adds visual clutter to an already label-dense tree. Key tension: redundant encoding vs. information overload; expertise reversal effect (novices benefit from explicit labels, but the inference from branch label to test outcome is a one-step connection that may constitute useful germane load). Consider in context of guided mode — if the construction animation scaffolds leaf meaning through sequenced appearance, static labels may be less necessary. If added, the template system would need to produce distinct leaf-level domain labels rather than repeating the parent's condition name.
 - **Status:** Not started
 
 ---

@@ -245,7 +245,7 @@ function generateParamDisplayProbability(a: DataPackageRegionA, v: ResolvedVocab
 function generateByConditionLabelsFrequency(a: DataPackageRegionA, v: ResolvedVocabulary): ByConditionLabels {
   return {
     population: {
-      domainLabel: v.populationName,
+      domainLabel: capitalise(v.populationName),
       structuralLabel: 'Population',
       countDisplay: formatCount(a.n),
     },
@@ -297,7 +297,7 @@ function generateByConditionLabelsProbability(a: DataPackageRegionA, v: Resolved
 
   return {
     population: {
-      domainLabel: v.populationName,
+      domainLabel: capitalise(v.populationName),
       structuralLabel: 'Population',
       countDisplay: '100%',
     },
@@ -342,7 +342,7 @@ function generateByConditionLabelsProbability(a: DataPackageRegionA, v: Resolved
 function generateByTestResultLabelsFrequency(a: DataPackageRegionA, v: ResolvedVocabulary): ByTestResultLabels {
   return {
     population: {
-      domainLabel: v.populationName,
+      domainLabel: capitalise(v.populationName),
       structuralLabel: 'Population',
       countDisplay: formatCount(a.n),
     },
@@ -396,7 +396,7 @@ function generateByTestResultLabelsProbability(a: DataPackageRegionA, v: Resolve
 
   return {
     population: {
-      domainLabel: v.populationName,
+      domainLabel: capitalise(v.populationName),
       structuralLabel: 'Population',
       countDisplay: '100%',
     },
