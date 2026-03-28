@@ -28,6 +28,8 @@ interface SidebarProps {
   onBaseRateChange: (value: number) => void;
   onSensitivityChange: (value: number) => void;
   onFprChange: (value: number) => void;
+  /** Ref for the cross-fade animation target (parameter labels + derived results). */
+  contentRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -109,6 +111,7 @@ export function Sidebar({
   onBaseRateChange,
   onSensitivityChange,
   onFprChange,
+  contentRef,
 }: SidebarProps) {
   const isProbability = displayMode === DisplayMode.Probability;
   const params = labels.parameterDisplayStrings;
@@ -120,73 +123,79 @@ export function Sidebar({
 
   return (
     <div className="sidebar">
-      {/* Section: Parameters */}
-      <div className="sidebar__section-label">Parameters</div>
+      {/* Cross-fade animation target — wraps all parameter content.
+          The N selector doesn't change between modes, but fading the
+          entire sidebar content together looks more cohesive than
+          selectively fading individual parameter labels. */}
+      <div ref={contentRef} className="sidebar__content">
+        {/* Section: Parameters */}
+        <div className="sidebar__section-label">Parameters</div>
 
-      {/* N Selector — segmented control */}
-      <div className="n-selector">
-        <div className="n-selector__label">Population size (N)</div>
-        <div className="n-selector__buttons">
-          {N_PRESETS.map(preset => (
-            <button
-              key={preset}
-              className={n === preset ? 'active' : ''}
-              onClick={() => onNChange(preset)}
-            >
-              {preset.toLocaleString()}
-            </button>
-          ))}
+        {/* N Selector — segmented control */}
+        <div className="n-selector">
+          <div className="n-selector__label">Population size (N)</div>
+          <div className="n-selector__buttons">
+            {N_PRESETS.map(preset => (
+              <button
+                key={preset}
+                className={n === preset ? 'active' : ''}
+                onClick={() => onNChange(preset)}
+              >
+                {preset.toLocaleString()}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Base Rate Slider */}
-      <ParameterSlider
-        displayString={params.baseRate}
-        isProbability={isProbability}
-        min={baseRateMin}
-        max={baseRateMax}
-        step={baseRateStep}
-        value={baseRate}
-        onChange={onBaseRateChange}
-      />
-
-      {/* Sensitivity Slider */}
-      <ParameterSlider
-        displayString={params.sensitivity}
-        isProbability={isProbability}
-        min={0}
-        max={1}
-        step={0.01}
-        value={sensitivity}
-        onChange={onSensitivityChange}
-      />
-
-      {/* FPR Slider */}
-      <ParameterSlider
-        displayString={params.fpr}
-        isProbability={isProbability}
-        min={0}
-        max={1}
-        step={0.01}
-        value={fpr}
-        onChange={onFprChange}
-      />
-
-      {/* Derived Results — visually distinguished from input controls */}
-      <div className="derived-results">
-        <div className="sidebar__section-label">Results</div>
-
-        <DerivedResult
-          displayString={params.totalTestPositiveRate}
+        {/* Base Rate Slider */}
+        <ParameterSlider
+          displayString={params.baseRate}
           isProbability={isProbability}
-          variant="default"
+          min={baseRateMin}
+          max={baseRateMax}
+          step={baseRateStep}
+          value={baseRate}
+          onChange={onBaseRateChange}
         />
 
-        <DerivedResult
-          displayString={params.posterior}
+        {/* Sensitivity Slider */}
+        <ParameterSlider
+          displayString={params.sensitivity}
           isProbability={isProbability}
-          variant="posterior"
+          min={0}
+          max={1}
+          step={0.01}
+          value={sensitivity}
+          onChange={onSensitivityChange}
         />
+
+        {/* FPR Slider */}
+        <ParameterSlider
+          displayString={params.fpr}
+          isProbability={isProbability}
+          min={0}
+          max={1}
+          step={0.01}
+          value={fpr}
+          onChange={onFprChange}
+        />
+
+        {/* Derived Results — visually distinguished from input controls */}
+        <div className="derived-results">
+          <div className="sidebar__section-label">Results</div>
+
+          <DerivedResult
+            displayString={params.totalTestPositiveRate}
+            isProbability={isProbability}
+            variant="default"
+          />
+
+          <DerivedResult
+            displayString={params.posterior}
+            isProbability={isProbability}
+            variant="posterior"
+          />
+        </div>
       </div>
     </div>
   );

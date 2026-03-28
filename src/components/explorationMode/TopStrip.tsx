@@ -22,6 +22,8 @@ interface TopStripProps {
   labels: DisplayModeLabels;
   onScenarioChange: (scenario: ScenarioDefinition) => void;
   onDisplayModeChange: (mode: DisplayMode) => void;
+  /** Ref for the cross-fade animation target (question + problem statement). */
+  contentRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function TopStrip({
@@ -30,6 +32,7 @@ export function TopStrip({
   labels,
   onScenarioChange,
   onDisplayModeChange,
+  contentRef,
 }: TopStripProps) {
   return (
     <div className="top-strip">
@@ -69,18 +72,22 @@ export function TopStrip({
         </div>
       </div>
 
-      {/* Question — the most important framing element */}
-      <div className="top-strip__question">
-        {labels.questionText.split('\n').map((line, i) => (
-          <div key={i}>
-            {containsLatex(line) ? <KaTeXInline latex={line} /> : line}
-          </div>
-        ))}
-      </div>
+      {/* Content area — question + problem statement. Cross-fade target:
+          only this text transitions; the controls above stay fully visible. */}
+      <div ref={contentRef} className="top-strip__content">
+        {/* Question — the most important framing element */}
+        <div className="top-strip__question">
+          {labels.questionText.split('\n').map((line, i) => (
+            <div key={i}>
+              {containsLatex(line) ? <KaTeXInline latex={line} /> : line}
+            </div>
+          ))}
+        </div>
 
-      {/* Problem Statement */}
-      <div className="top-strip__problem-statement">
-        {labels.problemStatementText}
+        {/* Problem Statement */}
+        <div className="top-strip__problem-statement">
+          {labels.problemStatementText}
+        </div>
       </div>
     </div>
   );

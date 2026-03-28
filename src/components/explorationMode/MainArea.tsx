@@ -25,6 +25,8 @@ interface MainAreaProps {
   displayMode: DisplayMode;
   groupingState: GroupingState;
   onGroupingChange: (state: GroupingState) => void;
+  /** Ref for the cross-fade animation target (visualisation content). */
+  contentRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function MainArea({
@@ -35,6 +37,7 @@ export function MainArea({
   displayMode,
   groupingState,
   onGroupingChange,
+  contentRef,
 }: MainAreaProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -95,8 +98,15 @@ export function MainArea({
         )}
       </div>
 
-      {/* Visualisation container — measured via ResizeObserver */}
-      <div className="main-area__vis-container" ref={containerRef}>
+      {/* Visualisation container — measured via ResizeObserver.
+          contentRef is the cross-fade animation target (vis labels transition). */}
+      <div className="main-area__vis-container" ref={(el) => {
+        // Attach both the ResizeObserver ref and the cross-fade ref to the same element.
+        (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+        if (contentRef) {
+          (contentRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+        }
+      }}>
         {size.width > 0 && size.height > 0 && (
           activeFormat === 'iconArray' ? (
             <IconArray

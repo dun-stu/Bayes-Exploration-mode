@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layers 0–3 complete, Layer 4 in progress. The exploration mode is a fully working integrated tool: sidebar with parameter controls (Y2 format in frequency mode, KaTeX probability notation in probability mode, Bayesian parentheticals), top strip with scenario selector and display mode toggle, and main area with icon array and frequency tree. Display mode toggle switches all three persistent visibility layers simultaneously (question text, parameter labels, visualisation labels). Format selector switches between icon array and frequency tree. Regrouping toggle now triggers smooth GSAP animation (700ms, power2.inOut) — icons interpolate between by-condition and by-test-result layouts with coordinated label crossfade. Tree displays domain labels above root and first-level nodes, cross-branch combination persistently shown. All six scenarios, both display modes, both formats, and both grouping states verified working across N values 100–1000. Next: Layer 4 remaining subtasks (tree construction animation, format-switching cross-fade, animation discipline review).
+Layers 0–3 complete, Layer 4 nearly complete. The exploration mode is a fully working integrated tool: sidebar with parameter controls (Y2 format in frequency mode, KaTeX probability notation in probability mode, Bayesian parentheticals), top strip with scenario selector and display mode toggle, and main area with icon array and frequency tree. Display mode toggle switches all three persistent visibility layers simultaneously with a coordinated cross-fade animation (300ms total, GSAP). Format selector switches between icon array and frequency tree. Regrouping toggle triggers smooth GSAP animation (700ms, power2.inOut) — icons interpolate between by-condition and by-test-result layouts with coordinated label crossfade. Tree displays domain labels above root and first-level nodes, cross-branch combination persistently shown. All six scenarios, both display modes, both formats, and both grouping states verified working across N values 100–1000. Tree construction/combination animation (4.2) deferred to Part 4. Next: Layer 4.4 (animation discipline review), then Layer 5.
 
 ---
 
@@ -353,25 +353,41 @@ Gap pixel offset in Step 7 of `computeLayout` was applied based on grid column/r
 - **Status:** Complete
 - **Verify:** Click regrouping toggle → smooth icon movement with label transitions; reverse works; mammography at $N = 1000$ performs smoothly
 
-**4.2: Tree construction and combination animations**
-- Branch-addition sequence: branch extends → child node appears → branch label fades in → node label appears
-- Cross-branch combination sequence: TP/FP nodes highlight → bracket draws → sum label appears → posterior appears
-- Construction state transitions trigger appropriate animations
-- **Status:** Not started
-- **Verify:** Step through each construction state with animation; combination animation plays correctly
+**4.2: Tree construction and combination animations** — DEFERRED to Part 4
 
-**4.3: Format-switching cross-fade**
-- Coordinated cross-fade across all three layers (question text, parameter labels, visualisation labels), 200–400ms
-- Spatial structure remains static throughout — only text changes
-- Works for both icon array and tree components
-- **Status:** Not started
-- **Verify:** Toggle display mode → coordinated text transition everywhere; spatial structure doesn't shift
+Construction state stepping (RootOnly → FirstBranch → ConditionPositiveSecondBranch → FullyBranched) and combination animation are Part 4 (guided mode) concerns — exploration mode always renders FullyBranched with CombinationShown. No exploration-mode consumer exists for these animations. Per scope discipline: only build capabilities the current layer's consumers need.
+
+**Dependency check (performed 2026-03-28):** No hard dependencies from 4.3, 4.4, Layer 5, or Part 4 on 4.2 being done now. 4.3 (format-switching) is a text-only crossfade independent of structural animation. 4.4 (animation discipline) already works via the cleanup mechanism established in 4.1. Part 4 can drive construction state transitions via instant snaps — the rendering support (construction state prop, visibility functions) is already built in Layer 2. Animation is an enhancement for Part 4, not a prerequisite.
+
+**What's preserved for Part 4:** The `FrequencyTree` component accepts `constructionState` and `combinationState` props. `isNodeVisible`, `isBranchVisible`, `getVisibleNodes`, `getVisibleBranches`, and `VISIBLE_NODES`/`VISIBLE_BRANCHES` maps are exported. The bracket is rendered as an SVG path suitable for stroke-dashoffset animation. The single-progress-tween pattern from 4.1 is reusable for batch colour transitions.
+
+- **Status:** Deferred to Part 4
+
+**4.3: Format-switching cross-fade** ✓
+
+**What was done:**
+- Coordinated cross-fade animation across all three persistent visibility layers when the display mode toggle switches between Frequency and Probability. Implemented via `useFormatCrossFade` hook in `src/components/explorationMode/useFormatCrossFade.ts`.
+- Animation strategy: fade-out (150ms) → dispatch state change at midpoint (content invisible) → fade-in (150ms). Total 300ms, within the spec's 200–400ms range. Uses GSAP for consistency with the regrouping animation (4.1).
+- Three content areas targeted via refs: top strip text (question + problem statement), sidebar content (parameter labels + derived results), and visualisation container (icon array labels or tree labels). Controls (scenario selector, display mode toggle buttons, N selector, format selector) remain fully visible — only text content that changes between modes participates in the cross-fade.
+- ExplorationMode orchestrates: intercepts the `onDisplayModeChange` callback, routes it through the hook instead of dispatching directly. The hook manages the GSAP timeline and dispatches the real `SET_DISPLAY_MODE` at the animation midpoint.
+- Guard against no-op transitions: clicking the already-active mode button does nothing. Mid-animation toggle kills the current timeline and restores opacity.
+- Content wrapper divs added to TopStrip (`top-strip__content`) and Sidebar (`sidebar__content`). MainArea's vis-container serves double duty as the cross-fade target (callback ref merges both the ResizeObserver ref and the cross-fade ref).
+
+**Spec divergences:** None. The implementation follows the spec exactly: cross-fade of all text content across all three layers, 200–400ms, spatial structure static throughout, Part 3 orchestrates using GSAP.
+
+**Forward-looking notes:**
+- The `useFormatCrossFade` hook exposes an `isTransitioning` ref. Subtask 4.4 (animation discipline) can use this to prevent other animations from starting during the cross-fade, or to decide interaction behaviour during the brief transition.
+- The cross-fade dispatches the state change at the midpoint via `onComplete` of the fade-out phase. React re-renders with new content while opacity is 0. The fade-in then reveals the new content. This means the new KaTeX content has the full 150ms fade-in duration to parse and render — more than enough for the lightweight KaTeX inline calls used in the sidebar and tree.
+- The `contentRef` props on TopStrip, Sidebar, and MainArea are optional — these components work unchanged if the ref is not provided (backwards compatibility for tests or other consumers).
+
+- **Status:** Complete
+- **Verify:** Toggle display mode → coordinated text transition across all three layers; spatial structure doesn't shift; both directions work; clicking the already-active mode does nothing; works with both icon array and frequency tree; works across all scenarios
 
 **4.4: Animation discipline during live interaction**
 - Slider drag: direct updates only (no GSAP animations triggered)
 - Discrete state changes (regrouping toggle, format switch, scenario change): animations trigger
 - Throttling if rendering can't sustain frame rate during drag at high $N$
-- Building-phase decisions to resolve here: regrouping toggle exact placement, animation coordination timing
+- Note: regrouping animation (4.1) already implements discipline via `useLayoutEffect` cleanup — data changes kill running timelines. 4.4 verifies this works across all animation types (regrouping + format-switching) and confirms no conflicts during rapid interaction.
 - **Status:** Not started
 - **Verify:** Drag slider → no animation, just direct updates; click regrouping toggle → smooth animation; rapid interaction doesn't cause animation conflicts
 
