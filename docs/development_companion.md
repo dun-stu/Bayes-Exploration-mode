@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layers 0 (scaffolding), 1 (data foundation), and 2 (static rendering) complete. Both visualisation components — icon array and frequency tree — render fully with all construction states, both display modes, and container-responsive scaling. Next: Layer 3 (app shell and integration — first working exploration mode). Harmonisation passes done after Layer 1; Layer 2 harmonisation pending.
+Layers 0–2 complete. Layer 3 in progress — subtask 3.1 (layout and parameter controls) complete: the three-layer exploration mode shell is built with working parameter controls, scenario switching, display mode toggle, and derived results display. Main area has placeholder pending visualisation integration. Next: subtask 3.2 (visualisation integration — placing icon array and frequency tree in the main area with live updating).
 
 ---
 
@@ -237,15 +237,38 @@ Gap pixel offset in Step 7 of `computeLayout` was applied based on grid column/r
 
 ### Layer 3 — App Shell and Integration *(critical milestone: first working exploration mode)*
 
-**3.1: Layout and parameter controls**
-- Three-layer screen structure: top strip (question/scenario/display mode), sidebar (parameter controls + derived results), main area (visualisation)
-- Parameter controls wired to computation pipeline: $N$ selector (discrete presets), base rate slider ($N$-relative steps), sensitivity slider (1% steps), FPR slider (1% steps)
-- Derived results display (total test-positive rate, posterior) visually distinguished from inputs
-- Scenario selector loading scenarios from Part 5 data
-- Display mode toggle (frequency ↔ probability)
-- Building-phase decisions to resolve here: sidebar proportions, problem statement visible vs. collapsible, $N$ selector widget type, parameter panel layout, derived results styling, format selector placement
-- **Status:** Not started
-- **Verify:** Sliders move and data package updates; scenario selection loads new parameters; layout accommodates all content
+**3.1: Layout and parameter controls** ✓
+
+**What was done:**
+- Three-layer screen layout implemented as `ExplorationMode` component (`src/components/explorationMode/`): top strip, sidebar (320px), and main area. Replaces the previous `VisualisationDemo` in App.tsx.
+- **Top strip:** Scenario dropdown selector (all 6 scenarios), display mode toggle (segmented control: Frequency/Probability), question text (with KaTeX rendering for probability-mode notation line), and problem statement text — always visible.
+- **Sidebar:** Population size (N) segmented control (100/200/500/1000), base rate slider (N-relative steps, range 1/N to (N-1)/N), sensitivity slider (1% steps, 0–100%), FPR slider (1% steps, 0–100%). All sliders update live during drag. Parameter display strings consumed directly from Region B — frequency mode shows Y2 format ("Base rate (prior): 1%" with "10 out of 1,000 have the disease" description), probability mode shows KaTeX notation ("P(D) = 0.01" with "Prior (prevalence)" description).
+- **Derived results:** Visually distinguished from input controls with background cards, left-accent borders (blue for total test-positive rate, orange for posterior), uppercase section labels, and a dividing rule. Content parsed from Region B display strings — frequency mode shows rate + count, probability mode shows KaTeX notation.
+- **Main area:** Format selector tabs (Icon Array / Frequency Tree) at top of visualisation area. Placeholder content for now (subtask 3.2 places actual components).
+- **State management:** `parameterReducer` updated with base rate snapping on N change (`snapBaseRate` function rounds to nearest 1/N step, clamped to valid range). Initial state changed from null/generic to mammography scenario loaded (scenarioId, vocabulary, and all parameters set from `MAMMOGRAPHY` constant).
+- **KaTeXInline component** created for HTML-context LaTeX rendering (used in sidebar parameter labels and derived results). Separate from the SVG-context `KaTeXLabel` used by the tree component.
+
+**Building-phase decisions resolved:**
+- **Sidebar width:** 320px fixed. Accommodates Y2 format strings at reasonable font size. Main area gets remaining width.
+- **Problem statement:** Always visible (not collapsible). It's short enough across all scenarios and both modes. Collapsibility would add UI complexity for minimal space savings.
+- **N selector:** Segmented control (button group). Four options fit well horizontally. Communicates "discrete choice from small set" better than a dropdown.
+- **Parameter panel layout:** Label + rate value on header line (left/right aligned), slider below, count description below slider. Clean vertical rhythm following the dependency chain.
+- **Derived results styling:** Card-style with coloured left accent (blue = cool family for test-positive rate, orange = warm family for posterior). Uppercase section labels. Background differentiation from input controls.
+- **Scenario selector:** Dropdown. Compact, works for 6 items, expandable if more scenarios are added.
+- **Format selector:** Tab-style button pair at top of main area. Active tab uses the deep blue from the colour scheme (#1A5276) for consistency.
+
+**Spec divergences:**
+- The initial state now loads mammography by importing `MAMMOGRAPHY` directly in `parameterState.ts`, rather than dispatching `SET_SCENARIO` on first render. This avoids a flash of generic/empty state. Functionally identical to the spec's "on first load, the tool presents mammography."
+- The `KaTeXInline` component was created as a separate HTML-context renderer rather than reusing the SVG-context `KaTeXLabel`. This was already anticipated in 2.4's forward-looking note ("If other components need inline centred KaTeX in foreignObjects, it could be extracted to a shared utility"). The HTML-context component is simpler (no foreignObject, no x/y positioning) — both share the same KaTeX rendering call.
+
+**Forward-looking notes:**
+- The `ExplorationMode` component holds `activeFormat` state locally (not in the reducer) since it's a view-layer concern. If Layer 4 format-switching animation needs to coordinate across components, this state may need to be lifted to the context.
+- The `Sidebar` component's string parsing (`parseFrequencyParam`, `parseProbabilityParam`, `parseDerivedResult`) splits Region B display strings by delimiter (" — " and ": "). This works for all current template outputs but is coupled to the template format. If the template system's string format changes, these parsers need updating.
+- The regrouping toggle (icon array contextual control) is not yet placed — it will be added in subtask 3.2 when the icon array component is integrated into the main area.
+- Base rate snapping (`snapBaseRate`) uses `Math.round(baseRate * n) / n` which works reliably for all N presets (100, 200, 500, 1000). Floating-point precision is not an issue at these magnitudes.
+
+- **Status:** Complete
+- **Verify:** Sliders move and data package updates; scenario selection loads new parameters and vocabulary; display mode toggle switches all text layers; N selector triggers base rate snapping; derived results update reactively; layout accommodates all content in both modes
 
 **3.2: Visualisation integration**
 - Icon array and frequency tree components placed in main area, receiving data package
@@ -362,3 +385,15 @@ Part 4 is not yet specified. Its design depends on the exploration mode being bu
 
 Also updated `Our Plan + Status.md`:
 - Updated "Next steps" paragraph and status summary to reflect that coding has begun and Layers 0–1 are complete.
+
+**2026-03-27 — Post-Layer 2 harmonisation.** Reconciled accumulated spec divergences from subtasks 2.1, 2.2, and 2.4 with the Implementation Details doc. (Subtask 2.3 had no spec divergences.) Changes made:
+
+1. **Grid dimension calculation:** Added implementation note documenting the candidate-scoring approach used instead of the simple $s = \sqrt{(W \times H) / N}$ formula. The scoring approach accounts for inter-icon spacing and reliably prevents container overflow. Same constraints satisfied.
+2. **Region-to-cell allocation:** Added implementation note documenting that the allocation algorithm counts actual occupied cells per grid line (handles incomplete last row/column at extreme aspect ratios or $N$ values).
+3. **Label positioning:** Added implementation note to the compound label section documenting the overlay approach (labels inside region bounding box) and the overlap avoidance logic for extreme-proportion cases (e.g., mammography 10/990 split).
+4. **Tree node dimensions and KaTeXInline:** Added implementation note to node rendering section documenting the 150×44 reference node dimensions and the `KaTeXInline` component (flexbox-centred foreignObject for node labels, vs. the absolute-positioned `KaTeXLabel` used for branch/bracket labels).
+5. **Branch label side assignment:** Added implementation note documenting left-side labels for left branches, right-side for right branches.
+6. **Tree node domain labels:** Added implementation note to the terminology model's "domain labels" section documenting that tree node domain labels (e.g., "Have disease: 10" rather than just "10") are deferred to Layer 3 as an integration decision — presentation format interacts with available space and node sizing in the assembled layout.
+
+Also updated `Our Plan + Status.md`:
+- Updated "Next steps" paragraph and status summary to reflect that Layers 0–2 are complete and Layer 3 is next.
