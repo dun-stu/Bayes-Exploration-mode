@@ -16,6 +16,7 @@ import 'katex/dist/katex.min.css';
 import type {
   DataPackageRegionA,
   DataPackageRegionB,
+  ByConditionLabels,
   TreeNodeLabels,
   TreeBranchLabels,
   CrossBranchCombinationLabels,
@@ -94,6 +95,26 @@ function KaTeXInline({ latex, fontSize, color }: { latex: string; fontSize: numb
   );
 }
 
+// ===== Domain label mapping for tree nodes =====
+
+/**
+ * Extract domain labels for root and first-level tree nodes from ByConditionLabels.
+ *
+ * Root gets the population name; first-level nodes get condition group names.
+ * Leaf nodes are excluded: their domain labels are identical to the parent's
+ * (e.g. both conditionPositive and truePositive say "Have the disease"),
+ * adding no new information. The leaf's distinguishing characteristic comes
+ * from its tree position and the branch label (structural term like
+ * "Sensitivity: 90%"), not from a distinct domain name.
+ */
+function getNodeDomainLabels(byCondition: ByConditionLabels): Partial<Record<TreeNodeId, string>> {
+  return {
+    root: byCondition.population.domainLabel,
+    conditionPositive: byCondition.conditionPositive.group.domainLabel,
+    conditionNegative: byCondition.conditionNegative.group.domainLabel,
+  };
+}
+
 // ===== Component =====
 
 export function FrequencyTree({
@@ -119,9 +140,18 @@ export function FrequencyTree({
   const branchLabels: TreeBranchLabels = modeLabels.treeBranches;
   const combinationLabels: CrossBranchCombinationLabels = modeLabels.crossBranchCombination;
 
+  // Domain labels come from the by-condition grouping (same in both display modes).
+  const domainLabels = useMemo(
+    () => getNodeDomainLabels(modeLabels.byCondition),
+    [modeLabels.byCondition],
+  );
+
   const showCombination =
     combinationState === TreeCombinationState.CombinationShown &&
     constructionState === TreeConstructionState.FullyBranched;
+
+  // Font size for domain labels above nodes — slightly smaller than node labels.
+  const domainFontSize = layout.branchFontSize * 0.9;
 
   return (
     <svg
@@ -146,19 +176,38 @@ export function FrequencyTree({
         );
       })}
 
-      {/* Nodes */}
+      {/* Nodes with domain labels (root + first-level only) */}
       {Array.from(layout.nodes.entries()).map(([nodeId, node]) => {
         if (!isNodeVisible(nodeId, constructionState)) return null;
+        const domainLabel = domainLabels[nodeId];
         return (
-          <TreeNode
-            key={nodeId}
-            node={node}
-            nodeId={nodeId}
-            label={nodeLabels[nodeId]}
-            fontSize={layout.nodeFontSize}
-            radius={layout.nodeRadius}
-            isLatexMode={displayMode === DisplayMode.Probability}
-          />
+          <g key={nodeId}>
+            {/* Domain label above node (root + first-level nodes only) */}
+            {domainLabel && (
+              <text
+                x={node.cx}
+                y={node.cy - node.height / 2 - domainFontSize * 0.4}
+                textAnchor="middle"
+                dominantBaseline="auto"
+                fontSize={domainFontSize}
+                fontWeight={500}
+                fontFamily="system-ui, sans-serif"
+                fill={COLORS.text.secondary}
+              >
+                {domainLabel}
+              </text>
+            )}
+
+            {/* Node rectangle + value label */}
+            <TreeNode
+              node={node}
+              nodeId={nodeId}
+              label={nodeLabels[nodeId]}
+              fontSize={layout.nodeFontSize}
+              radius={layout.nodeRadius}
+              isLatexMode={displayMode === DisplayMode.Probability}
+            />
+          </g>
         );
       })}
 

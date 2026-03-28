@@ -8,11 +8,14 @@
  *
  * All parameter state flows through AppStateContext.
  * The data package (Region A numerical, Region B textual) is derived state.
+ *
+ * View-layer state (activeFormat, groupingState) is local — these are
+ * presentation concerns, not problem-definition concerns.
  */
 
 import { useState } from 'react';
 import { useAppState } from '../../state';
-import { DisplayMode } from '../../types';
+import { DisplayMode, GroupingState } from '../../types';
 import { TopStrip } from './TopStrip';
 import { Sidebar } from './Sidebar';
 import { MainArea, type VisFormat } from './MainArea';
@@ -21,6 +24,9 @@ import './ExplorationMode.css';
 export function ExplorationMode() {
   const { parameters, dispatch, dataPackage } = useAppState();
   const [activeFormat, setActiveFormat] = useState<VisFormat>('iconArray');
+  const [groupingState, setGroupingState] = useState<GroupingState>(
+    GroupingState.GroupedByCondition,
+  );
 
   // Select the active display mode's label set from Region B
   const activeLabels = parameters.displayMode === DisplayMode.Frequency
@@ -71,6 +77,11 @@ export function ExplorationMode() {
         <MainArea
           activeFormat={activeFormat}
           onFormatChange={setActiveFormat}
+          regionA={dataPackage.regionA}
+          regionB={dataPackage.regionB}
+          displayMode={parameters.displayMode}
+          groupingState={groupingState}
+          onGroupingChange={setGroupingState}
         />
       </div>
     </div>

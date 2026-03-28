@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layers 0–2 complete. Layer 3 in progress — subtask 3.1 (layout and parameter controls) complete: the three-layer exploration mode shell is built with working parameter controls, scenario switching, display mode toggle, and derived results display. Main area has placeholder pending visualisation integration. Next: subtask 3.2 (visualisation integration — placing icon array and frequency tree in the main area with live updating).
+Layers 0–2 complete. Layer 3 in progress — subtasks 3.1 and 3.2 complete. The exploration mode is now a working integrated tool: icon array and frequency tree render live in the main area, updating immediately on parameter changes. Format selector switches between components, regrouping toggle (hard snap) switches the icon array between by-condition and by-test-result layouts. Tree displays domain labels above root and first-level nodes. All six scenarios, both display modes, and both grouping states verified working. Next: subtask 3.3 (full display mode integration — verifying all text layers switch correctly).
 
 ---
 
@@ -270,14 +270,35 @@ Gap pixel offset in Step 7 of `computeLayout` was applied based on grid column/r
 - **Status:** Complete
 - **Verify:** Sliders move and data package updates; scenario selection loads new parameters and vocabulary; display mode toggle switches all text layers; N selector triggers base rate snapping; derived results update reactively; layout accommodates all content in both modes
 
-**3.2: Visualisation integration**
-- Icon array and frequency tree components placed in main area, receiving data package
-- Format selector tabs switching between components
-- Live updating during slider drag (direct updates, no animation triggers)
-- Regrouping toggle for icon array (hard snap — animation comes in Layer 4)
-- Initial state: mammography scenario, frequency mode, icon array, grouped-by-condition
-- **Status:** Not started
-- **Verify:** Drag a slider → visualisation updates; switch format → other component appears; load different scenario → everything updates; regrouping toggle works
+**3.2: Visualisation integration** ✓
+
+**What was done:**
+- `MainArea` component replaced placeholder with real `IconArray` and `FrequencyTree` components. Container dimensions measured via `ResizeObserver` and passed as `width`/`height` props. The non-active component unmounts when the format tab switches (not just hidden).
+- Data package (`regionA`, `regionB`) and state props (`displayMode`, `groupingState`) wired from `ExplorationMode` through `MainArea` to the visualisation components. Both components re-render on every parameter change during slider drag — direct updates, no animation triggers.
+- **Regrouping toggle** added as a contextual control in the toolbar, adjacent to the format selector. Segmented control styled consistently with the display mode toggle ("Group by: Condition | Test Result"). Only visible when icon array is active — disappears when tree is selected. Hard snap between grouping states (animation deferred to Layer 4).
+- `groupingState` managed as local state in `ExplorationMode` (alongside `activeFormat`), since both are view-layer concerns, not problem-definition state.
+- **Tree node domain labels (integration decision resolved).** Domain labels rendered as small text annotations above root and first-level nodes only. Root shows population name ("people", "emails"), first-level shows condition group names ("Have the disease", "Are spam"). Leaf nodes excluded: their domain labels from `ByConditionLabels` are identical to the parent's (both TP and FN say "Have the disease"), adding no new information. Leaves are distinguished by tree position and branch labels (structural terms like "Sensitivity: 90%"). Font size slightly smaller than branch labels for visual hierarchy.
+- **Tree cross-branch combination** persistently shown in exploration mode (`CombinationShown` state passed by default).
+- **Initial state** confirmed: mammography scenario, frequency mode, icon array, grouped-by-condition, fully partitioned construction state. All defaults flow correctly through context.
+- Toolbar `flex-wrap` added for graceful handling at narrower viewport widths.
+
+**Building-phase decisions resolved:**
+- **Regrouping toggle placement:** In the toolbar, to the right of the format selector with a 16px left margin. Segmented control matching existing UI patterns.
+- **Regrouping toggle wording:** "Group by: Condition / Test Result" — clear without prior knowledge, follows strand b wording principles (operation-descriptive rather than structural-terminology).
+- **Tree node domain labels — above-node text vs. inside-node compound:** Above-node text chosen. Keeps node rectangles compact (150×44 at scale=1), avoids needing two-line layouts inside nodes, and maintains visual separation between domain context (what this group is) and numerical content (how many). Consistent with branches having their labels beside them rather than inside.
+- **Tree domain labels — root and first-level only:** Leaf domain labels excluded because they're redundant with parent (conditionPositive.truePositive.domainLabel = conditionPositive.group.domainLabel = "Have the disease"). The leaf's distinguishing characteristic is its tree position and branch label, not a distinct domain name.
+
+**Spec divergences:**
+- Tree node domain labels show on root and first-level nodes only, not on leaves. The spec says "tree nodes carry domain group names alongside counts" for all nodes, but the current `ByConditionLabels` data structure assigns leaf nodes the same domain label as their parent group. Showing "Have the disease" above both the conditionPositive node (10) and the truePositive node (9) is redundant and adds visual clutter. If distinct leaf-level domain labels are needed later (e.g. "Have disease & test positive"), the template system would need to produce them — this is a potential Layer 5 refinement.
+- `TreeCombinationState.CombinationShown` is passed as a constant for exploration mode rather than being configurable. The spec says "persistently shown" for exploration mode, so this is correct behaviour — the combination state toggle is a Part 4 concern.
+
+**Forward-looking notes:**
+- The `groupingState` is local to `ExplorationMode`. If Layer 4's regrouping animation needs to coordinate across components (e.g. disable the toggle during animation), this state access pattern works — the animation trigger and state change happen in the same component.
+- The vis container uses `overflow: hidden` to prevent SVG overflow during transitions. Layer 4 animation should work within these bounds.
+- At very narrow viewports (< ~750px main area width), the toolbar wraps the regrouping toggle below the format selector. Layer 5's responsive layout will handle this more fully.
+
+- **Status:** Complete
+- **Verify:** Drag a slider → visualisation updates immediately; switch format → other component appears with regrouping toggle showing/hiding; load different scenario → all text, parameters, and visualisation update; regrouping toggle switches icon array layout; tree shows domain labels above root and first-level nodes; cross-branch combination visible on tree; both display modes work across all components
 
 **3.3: Full display mode integration**
 - Part-3-facing template outputs integrated: question text, problem statement, parameter display strings in their UI positions

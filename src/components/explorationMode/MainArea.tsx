@@ -2,21 +2,63 @@
  * MainArea — Visualisation container (Group 3 controls + vis).
  *
  * Contains the format selector (icon array ↔ frequency tree) at the top,
- * and the visualisation container below. For subtask 3.1, the visualisation
- * area is a placeholder — components will be placed here in subtask 3.2.
+ * plus a contextual regrouping toggle for the icon array,
+ * and the actual visualisation component filling the remaining space.
+ *
+ * Both visualisation components are container-filling: they adapt to whatever
+ * space is available via ResizeObserver-measured dimensions.
  */
+
+import { useRef, useState, useEffect } from 'react';
+import type { DataPackageRegionA, DataPackageRegionB } from '../../types';
+import { GroupingState, DisplayMode, TreeCombinationState } from '../../types';
+import { IconArray } from '../iconArray/IconArray';
+import { FrequencyTree } from '../frequencyTree/FrequencyTree';
 
 type VisFormat = 'iconArray' | 'frequencyTree';
 
 interface MainAreaProps {
   activeFormat: VisFormat;
   onFormatChange: (format: VisFormat) => void;
+  regionA: DataPackageRegionA;
+  regionB: DataPackageRegionB;
+  displayMode: DisplayMode;
+  groupingState: GroupingState;
+  onGroupingChange: (state: GroupingState) => void;
 }
 
-export function MainArea({ activeFormat, onFormatChange }: MainAreaProps) {
+export function MainArea({
+  activeFormat,
+  onFormatChange,
+  regionA,
+  regionB,
+  displayMode,
+  groupingState,
+  onGroupingChange,
+}: MainAreaProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  // Measure the vis container via ResizeObserver.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        setSize({ width: Math.floor(width), height: Math.floor(height) });
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const isByCondition = groupingState === GroupingState.GroupedByCondition;
+
   return (
     <div className="main-area">
-      {/* Toolbar with format selector */}
+      {/* Toolbar with format selector + contextual controls */}
       <div className="main-area__toolbar">
         <div className="format-selector">
           <button
@@ -32,21 +74,50 @@ export function MainArea({ activeFormat, onFormatChange }: MainAreaProps) {
             Frequency Tree
           </button>
         </div>
+
+        {/* Regrouping toggle — contextual, only when icon array is active */}
+        {activeFormat === 'iconArray' && (
+          <div className="grouping-toggle">
+            <span className="grouping-toggle__label">Group by:</span>
+            <button
+              className={isByCondition ? 'active' : ''}
+              onClick={() => onGroupingChange(GroupingState.GroupedByCondition)}
+            >
+              Condition
+            </button>
+            <button
+              className={!isByCondition ? 'active' : ''}
+              onClick={() => onGroupingChange(GroupingState.GroupedByTestResult)}
+            >
+              Test Result
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Visualisation container — placeholder until subtask 3.2 */}
-      <div className="main-area__vis-container">
-        <div className="main-area__placeholder">
-          <div className="main-area__placeholder-icon">
-            {activeFormat === 'iconArray' ? '\u25A6' : '\u2442'}
-          </div>
-          <div>
-            {activeFormat === 'iconArray'
-              ? 'Icon Array — will be rendered here'
-              : 'Frequency Tree — will be rendered here'
-            }
-          </div>
-        </div>
+      {/* Visualisation container — measured via ResizeObserver */}
+      <div className="main-area__vis-container" ref={containerRef}>
+        {size.width > 0 && size.height > 0 && (
+          activeFormat === 'iconArray' ? (
+            <IconArray
+              regionA={regionA}
+              regionB={regionB}
+              width={size.width}
+              height={size.height}
+              groupingState={groupingState}
+              displayMode={displayMode}
+            />
+          ) : (
+            <FrequencyTree
+              regionA={regionA}
+              regionB={regionB}
+              width={size.width}
+              height={size.height}
+              combinationState={TreeCombinationState.CombinationShown}
+              displayMode={displayMode}
+            />
+          )
+        )}
       </div>
     </div>
   );
