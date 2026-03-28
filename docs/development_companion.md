@@ -372,6 +372,7 @@ Construction state stepping (RootOnly → FirstBranch → ConditionPositiveSecon
 - ExplorationMode orchestrates: intercepts the `onDisplayModeChange` callback, routes it through the hook instead of dispatching directly. The hook manages the GSAP timeline and dispatches the real `SET_DISPLAY_MODE` at the animation midpoint.
 - Guard against no-op transitions: clicking the already-active mode button does nothing. Mid-animation toggle kills the current timeline and restores opacity.
 - Content wrapper divs added to TopStrip (`top-strip__content`) and Sidebar (`sidebar__content`). MainArea's vis-container serves double duty as the cross-fade target (callback ref merges both the ResizeObserver ref and the cross-fade ref).
+- **Layout shift fix:** Probability mode's question text has an extra KaTeX notation line (`P(D | T⁺) = ?`) that frequency mode lacks. Without mitigation, the top strip height would change between modes, causing everything below to jump. Fixed by rendering an invisible spacer (`visibility: hidden`) in frequency mode that renders the same KaTeX content — this reserves exactly the right height so the top strip is the same size in both modes. Zero layout shift during cross-fade.
 
 **Spec divergences:** None. The implementation follows the spec exactly: cross-fade of all text content across all three layers, 200–400ms, spatial structure static throughout, Part 3 orchestrates using GSAP.
 

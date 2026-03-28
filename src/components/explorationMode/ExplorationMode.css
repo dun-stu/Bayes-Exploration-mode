@@ -115,6 +115,15 @@
   line-height: 1.4;
 }
 
+/* Invisible spacer that reserves the height of the KaTeX notation line
+   in frequency mode, preventing layout shift during format-switching
+   cross-fade. The KaTeX content is rendered but invisible — this ensures
+   the reserved height exactly matches what probability mode would show. */
+.top-strip__question-spacer {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .top-strip__problem-statement {
   font-size: 14px;
   color: #424242;

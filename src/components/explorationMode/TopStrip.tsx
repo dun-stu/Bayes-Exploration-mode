@@ -75,13 +75,23 @@ export function TopStrip({
       {/* Content area — question + problem statement. Cross-fade target:
           only this text transitions; the controls above stay fully visible. */}
       <div ref={contentRef} className="top-strip__content">
-        {/* Question — the most important framing element */}
+        {/* Question — the most important framing element.
+            Probability mode has two lines (natural language + KaTeX notation);
+            frequency mode has one. A height-reserving spacer in frequency mode
+            keeps the top strip height constant across modes, preventing layout
+            shift during the format-switching cross-fade. */}
         <div className="top-strip__question">
           {labels.questionText.split('\n').map((line, i) => (
             <div key={i}>
               {containsLatex(line) ? <KaTeXInline latex={line} /> : line}
             </div>
           ))}
+          {/* Reserve height for the KaTeX notation line when in frequency mode */}
+          {displayMode === DisplayMode.Frequency && (
+            <div className="top-strip__question-spacer" aria-hidden="true">
+              <KaTeXInline latex={String.raw`P(D \mid T^+) = ?`} />
+            </div>
+          )}
         </div>
 
         {/* Problem Statement */}
