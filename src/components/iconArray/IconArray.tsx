@@ -5,14 +5,16 @@
  * Subtask 2.1: core grid and colouring.
  * Subtask 2.2: compound label system, construction state colouring, display mode.
  * Subtask 2.3: second grouping layout (by-test-result), dual positions, grouping state switching.
- * Layer 4 (pending): animation (regrouping, format-switching cross-fade).
+ * Subtask 4.1: regrouping animation — GSAP position interpolation with label crossfade.
  *
  * Both by-condition and by-test-result layouts are computed upfront. Each icon
- * stores positions from both layouts; the groupingState prop selects which set
- * to render (hard snap for now — Layer 4 adds animation interpolation).
+ * stores positions from both layouts. The groupingState prop selects which set
+ * to render. When animateTransitions is true, grouping state changes trigger
+ * GSAP-animated transitions; otherwise, positions snap instantly.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useRef, useLayoutEffect } from 'react';
+import gsap from 'gsap';
 import type {
   DataPackageRegionA,
   DataPackageRegionB,
@@ -28,6 +30,14 @@ import {
   type IconGroup,
 } from './layout';
 
+// ===== Animation Constants =====
+
+/** Duration of the regrouping animation in seconds. */
+const REGROUP_DURATION = 0.7;
+
+/** Easing for icon position interpolation. */
+const REGROUP_EASE = 'power2.inOut';
+
 // ===== Props =====
 
 interface IconArrayProps {
@@ -38,6 +48,8 @@ interface IconArrayProps {
   constructionState?: IconArrayConstructionState;
   groupingState?: GroupingState;
   displayMode?: DisplayMode;
+  /** When true, grouping state changes trigger GSAP animation instead of instant snap. */
+  animateTransitions?: boolean;
 }
 
 // ===== Construction State → Colour Logic =====
@@ -231,11 +243,34 @@ function computeRegionBounds(
   return { minX, minY, maxX, maxY };
 }
 
-// ===== Label Padding =====
+// ===== Label Overlap Avoidance =====
 
 const LABEL_PADDING_H = 4;
 const LABEL_PADDING_V = 2;
 const LABEL_BG_OPACITY = 0.75;
+
+function computeR2YOffset(
+  r1Bounds: RegionBounds | null,
+  r2Bounds: RegionBounds | null,
+  region1Content: CompoundLabelContent | null,
+  fontSize: number,
+): number {
+  if (!r1Bounds || !r2Bounds || !region1Content) return 0;
+
+  const lineHeight = fontSize * 1.3;
+  const compositionFontSize = fontSize * 0.85;
+  const r1LabelHeight = region1Content.compositionLine
+    ? lineHeight + compositionFontSize * 1.3 + LABEL_PADDING_V * 2
+    : lineHeight + LABEL_PADDING_V * 2;
+
+  const yOverlap = Math.abs(r1Bounds.minY - r2Bounds.minY) < r1LabelHeight;
+  const xOverlap = r1Bounds.maxX > r2Bounds.minX || r2Bounds.maxX > r1Bounds.minX;
+
+  if (yOverlap && xOverlap) {
+    return r1LabelHeight + 2;
+  }
+  return 0;
+}
 
 // ===== Region group sets for each grouping state =====
 
@@ -252,45 +287,172 @@ export function IconArray({
   constructionState = IconArrayConstructionState.FullyPartitioned,
   groupingState = GroupingState.GroupedByCondition,
   displayMode = DisplayMode.Frequency,
+  animateTransitions = false,
 }: IconArrayProps) {
   const isByCondition = groupingState === GroupingState.GroupedByCondition;
 
-  // Compute both layouts upfront — memoised on data and dimensions.
+  // ── Refs for GSAP animation ──
+  const iconRefsMap = useRef<Map<number, SVGRectElement>>(new Map());
+  const conditionLabelsRef = useRef<SVGGElement>(null);
+  const testResultLabelsRef = useRef<SVGGElement>(null);
+  const timelineRef = useRef<gsap.core.Timeline | null>(null);
+  const prevGroupingRef = useRef<GroupingState>(groupingState);
+
+  // ── Compute both layouts upfront ──
   const dualLayout: DualLayoutResult = useMemo(
     () => computeDualLayout(regionA, width, height),
     [regionA, width, height],
   );
 
-  // Build label content based on grouping state, display mode, and construction state.
-  const labelContent = useMemo(() => {
-    const modeLabels = displayMode === DisplayMode.Frequency
-      ? regionB.frequency
-      : regionB.probability;
+  // ── Label content for BOTH grouping states (needed for crossfade) ──
+  const modeLabels = useMemo(
+    () => displayMode === DisplayMode.Frequency ? regionB.frequency : regionB.probability,
+    [regionB, displayMode],
+  );
 
-    if (isByCondition) {
-      return buildLabelContent(modeLabels.byCondition, constructionState);
-    } else {
-      return buildByTestResultLabelContent(modeLabels.byTestResult, constructionState);
-    }
-  }, [regionB, displayMode, isByCondition, constructionState]);
+  const conditionLabelContent = useMemo(
+    () => buildLabelContent(modeLabels.byCondition, constructionState),
+    [modeLabels, constructionState],
+  );
 
-  // Partition icons into region 1 and region 2 for label positioning,
-  // using positions from the current grouping state.
-  const { region1Positions, region2Positions } = useMemo(() => {
-    const r1Groups = isByCondition ? BY_CONDITION_R1_GROUPS : BY_TEST_RESULT_R1_GROUPS;
-    const r1: Array<{ x: number; y: number }> = [];
-    const r2: Array<{ x: number; y: number }> = [];
+  const testResultLabelContent = useMemo(
+    () => buildByTestResultLabelContent(modeLabels.byTestResult, constructionState),
+    [modeLabels, constructionState],
+  );
+
+  // ── Region positions for BOTH grouping states (for label bounds) ──
+  const regionPositions = useMemo(() => {
+    const condR1: Array<{ x: number; y: number }> = [];
+    const condR2: Array<{ x: number; y: number }> = [];
+    const testR1: Array<{ x: number; y: number }> = [];
+    const testR2: Array<{ x: number; y: number }> = [];
+
     for (const icon of dualLayout.icons) {
-      const pos = isByCondition ? icon.byCondition : icon.byTestResult;
-      if (r1Groups.has(icon.group)) {
-        r1.push(pos);
+      if (BY_CONDITION_R1_GROUPS.has(icon.group)) {
+        condR1.push(icon.byCondition);
       } else {
-        r2.push(pos);
+        condR2.push(icon.byCondition);
+      }
+      if (BY_TEST_RESULT_R1_GROUPS.has(icon.group)) {
+        testR1.push(icon.byTestResult);
+      } else {
+        testR2.push(icon.byTestResult);
       }
     }
-    return { region1Positions: r1, region2Positions: r2 };
-  }, [dualLayout.icons, isByCondition]);
 
+    return { condR1, condR2, testR1, testR2 };
+  }, [dualLayout.icons]);
+
+  // ── Regrouping animation ──
+  //
+  // Uses useLayoutEffect so DOM positions are set before the browser paints.
+  // When groupingState changes and animateTransitions is true:
+  //   1. React has already rendered icons at the TARGET positions.
+  //   2. We immediately set DOM positions back to SOURCE positions (pre-paint).
+  //   3. GSAP animates from source to target via a single progress tween
+  //      (batch-updates all icon positions per frame for performance at N=1000).
+  //   4. Labels crossfade: source labels fade out, then target labels fade in.
+  //
+  // If the user toggles mid-animation, the animation is killed and the new
+  // transition starts from the previous state's positions (simple and correct
+  // for a two-state toggle).
+  useLayoutEffect(() => {
+    const prevGrouping = prevGroupingRef.current;
+    prevGroupingRef.current = groupingState;
+
+    if (prevGrouping === groupingState) return;
+
+    // Kill any existing animation
+    if (timelineRef.current) {
+      timelineRef.current.kill();
+      timelineRef.current = null;
+    }
+
+    if (!animateTransitions) return;
+
+    // Determine source and target position keys
+    const sourceKey: 'byCondition' | 'byTestResult' =
+      prevGrouping === GroupingState.GroupedByCondition ? 'byCondition' : 'byTestResult';
+    const targetKey: 'byCondition' | 'byTestResult' =
+      groupingState === GroupingState.GroupedByCondition ? 'byCondition' : 'byTestResult';
+    const sourceIsCondition = prevGrouping === GroupingState.GroupedByCondition;
+
+    // Set all icons to source positions before the browser paints
+    const icons = dualLayout.icons;
+    for (let i = 0; i < icons.length; i++) {
+      const el = iconRefsMap.current.get(icons[i].index);
+      if (!el) continue;
+      const s = icons[i][sourceKey];
+      el.setAttribute('x', String(s.x));
+      el.setAttribute('y', String(s.y));
+    }
+
+    // Set label opacities to source state
+    if (conditionLabelsRef.current) {
+      gsap.set(conditionLabelsRef.current, { opacity: sourceIsCondition ? 1 : 0 });
+    }
+    if (testResultLabelsRef.current) {
+      gsap.set(testResultLabelsRef.current, { opacity: sourceIsCondition ? 0 : 1 });
+    }
+
+    // Build the animation timeline
+    const progress = { value: 0 };
+    const tl = gsap.timeline();
+
+    // Icon position animation — single progress tween with batch DOM updates.
+    // This is more performant than 1000 individual GSAP tweens: one tween
+    // drives the interpolation, and onUpdate batch-sets all attributes.
+    tl.to(progress, {
+      value: 1,
+      duration: REGROUP_DURATION,
+      ease: REGROUP_EASE,
+      onUpdate() {
+        const p = progress.value;
+        for (let i = 0; i < icons.length; i++) {
+          const el = iconRefsMap.current.get(icons[i].index);
+          if (!el) continue;
+          const s = icons[i][sourceKey];
+          const t = icons[i][targetKey];
+          el.setAttribute('x', String(s.x + (t.x - s.x) * p));
+          el.setAttribute('y', String(s.y + (t.y - s.y) * p));
+        }
+      },
+    }, 0);
+
+    // Label crossfade — source labels fade out early, target labels fade in late.
+    // The overlap creates a brief period where both are partially visible,
+    // matching the spec's "icons begin moving, partway through the old labels
+    // start fading, icons arrive at target positions, new labels fade in."
+    const fadeOutEl = sourceIsCondition
+      ? conditionLabelsRef.current
+      : testResultLabelsRef.current;
+    const fadeInEl = sourceIsCondition
+      ? testResultLabelsRef.current
+      : conditionLabelsRef.current;
+
+    if (fadeOutEl) {
+      tl.to(fadeOutEl, {
+        opacity: 0,
+        duration: REGROUP_DURATION * 0.4,
+        ease: 'power1.out',
+      }, 0);
+    }
+    if (fadeInEl) {
+      tl.fromTo(fadeInEl,
+        { opacity: 0 },
+        { opacity: 1, duration: REGROUP_DURATION * 0.4, ease: 'power1.in' },
+        REGROUP_DURATION * 0.6,
+      );
+    }
+
+    timelineRef.current = tl;
+
+    return () => {
+      tl.kill();
+    };
+  }, [groupingState, animateTransitions, dualLayout]);
+
+  // ── Early exit ──
   if (dualLayout.icons.length === 0) return null;
 
   const { icons, iconSize } = dualLayout;
@@ -298,27 +460,14 @@ export function IconArray({
   const fontSize = labelFontSize(iconSize);
   const fontWeight = labelFontWeight(iconSize);
 
-  // Compute region bounding boxes for label positioning.
-  const r1Bounds = computeRegionBounds(region1Positions, iconSize);
-  const r2Bounds = computeRegionBounds(region2Positions, iconSize);
+  // ── Compute bounds for both grouping states' labels ──
+  const condR1Bounds = computeRegionBounds(regionPositions.condR1, iconSize);
+  const condR2Bounds = computeRegionBounds(regionPositions.condR2, iconSize);
+  const testR1Bounds = computeRegionBounds(regionPositions.testR1, iconSize);
+  const testR2Bounds = computeRegionBounds(regionPositions.testR2, iconSize);
 
-  // Compute label height for overlap avoidance.
-  const lineHeight = fontSize * 1.3;
-  const compositionFontSize = fontSize * 0.85;
-  const r1LabelHeight = labelContent.region1
-    ? (labelContent.region1.compositionLine
-        ? lineHeight + compositionFontSize * 1.3 + LABEL_PADDING_V * 2
-        : lineHeight + LABEL_PADDING_V * 2)
-    : 0;
-
-  let r2YOffset = 0;
-  if (r1Bounds && r2Bounds && labelContent.region1) {
-    const yOverlap = Math.abs(r1Bounds.minY - r2Bounds.minY) < r1LabelHeight;
-    const xOverlap = r1Bounds.maxX > r2Bounds.minX || r2Bounds.maxX > r1Bounds.minX;
-    if (yOverlap && xOverlap) {
-      r2YOffset = r1LabelHeight + 2;
-    }
-  }
+  const condR2YOffset = computeR2YOffset(condR1Bounds, condR2Bounds, conditionLabelContent.region1, fontSize);
+  const testR2YOffset = computeR2YOffset(testR1Bounds, testR2Bounds, testResultLabelContent.region1, fontSize);
 
   return (
     <svg
@@ -328,12 +477,17 @@ export function IconArray({
       role="img"
       aria-label={`Icon array showing ${regionA.n} icons`}
     >
-      {/* Icons — positioned from current grouping state's layout */}
+      {/* Icons — React renders at the current groupingState's positions.
+          During animation, useLayoutEffect overrides these positions via GSAP
+          before the browser paints. */}
       {icons.map((icon: DualLayoutIcon) => {
         const pos = isByCondition ? icon.byCondition : icon.byTestResult;
         return (
           <rect
             key={icon.index}
+            ref={(el) => {
+              if (el) iconRefsMap.current.set(icon.index, el);
+            }}
             x={pos.x}
             y={pos.y}
             width={iconSize}
@@ -345,27 +499,63 @@ export function IconArray({
         );
       })}
 
-      {/* Compound labels */}
-      {labelContent.region1 && r1Bounds && (
-        <CompoundLabel
-          content={labelContent.region1}
-          bounds={r1Bounds}
-          fontSize={fontSize}
-          fontWeight={fontWeight}
-          containerWidth={width}
-          yOffset={0}
-        />
-      )}
-      {labelContent.region2 && r2Bounds && (
-        <CompoundLabel
-          content={labelContent.region2}
-          bounds={r2Bounds}
-          fontSize={fontSize}
-          fontWeight={fontWeight}
-          containerWidth={width}
-          yOffset={r2YOffset}
-        />
-      )}
+      {/* By-condition labels — visible when grouped by condition,
+          hidden (opacity 0) when grouped by test result.
+          GSAP animates opacity during regrouping transitions. */}
+      <g
+        ref={conditionLabelsRef}
+        style={{ opacity: isByCondition ? 1 : 0 }}
+      >
+        {conditionLabelContent.region1 && condR1Bounds && (
+          <CompoundLabel
+            content={conditionLabelContent.region1}
+            bounds={condR1Bounds}
+            fontSize={fontSize}
+            fontWeight={fontWeight}
+            containerWidth={width}
+            yOffset={0}
+          />
+        )}
+        {conditionLabelContent.region2 && condR2Bounds && (
+          <CompoundLabel
+            content={conditionLabelContent.region2}
+            bounds={condR2Bounds}
+            fontSize={fontSize}
+            fontWeight={fontWeight}
+            containerWidth={width}
+            yOffset={condR2YOffset}
+          />
+        )}
+      </g>
+
+      {/* By-test-result labels — visible when grouped by test result,
+          hidden (opacity 0) when grouped by condition.
+          GSAP animates opacity during regrouping transitions. */}
+      <g
+        ref={testResultLabelsRef}
+        style={{ opacity: isByCondition ? 0 : 1 }}
+      >
+        {testResultLabelContent.region1 && testR1Bounds && (
+          <CompoundLabel
+            content={testResultLabelContent.region1}
+            bounds={testR1Bounds}
+            fontSize={fontSize}
+            fontWeight={fontWeight}
+            containerWidth={width}
+            yOffset={0}
+          />
+        )}
+        {testResultLabelContent.region2 && testR2Bounds && (
+          <CompoundLabel
+            content={testResultLabelContent.region2}
+            bounds={testR2Bounds}
+            fontSize={fontSize}
+            fontWeight={fontWeight}
+            containerWidth={width}
+            yOffset={testR2YOffset}
+          />
+        )}
+      </g>
     </svg>
   );
 }

@@ -106,6 +106,7 @@ export function MainArea({
               height={size.height}
               groupingState={groupingState}
               displayMode={displayMode}
+              animateTransitions
             />
           ) : (
             <FrequencyTree

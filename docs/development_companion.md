@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layers 0–3 complete. The exploration mode is a fully working integrated tool: sidebar with parameter controls (Y2 format in frequency mode, KaTeX probability notation in probability mode, Bayesian parentheticals), top strip with scenario selector and display mode toggle, and main area with icon array and frequency tree. Display mode toggle switches all three persistent visibility layers simultaneously (question text, parameter labels, visualisation labels). Format selector switches between icon array and frequency tree, regrouping toggle (hard snap) switches between by-condition and by-test-result layouts. Tree displays domain labels above root and first-level nodes, cross-branch combination persistently shown. All six scenarios, both display modes, both formats, and both grouping states verified working across N values 100–1000. Next: Layer 4 (animation — regrouping, tree construction, format-switching cross-fade, animation discipline during live interaction).
+Layers 0–3 complete, Layer 4 in progress. The exploration mode is a fully working integrated tool: sidebar with parameter controls (Y2 format in frequency mode, KaTeX probability notation in probability mode, Bayesian parentheticals), top strip with scenario selector and display mode toggle, and main area with icon array and frequency tree. Display mode toggle switches all three persistent visibility layers simultaneously (question text, parameter labels, visualisation labels). Format selector switches between icon array and frequency tree. Regrouping toggle now triggers smooth GSAP animation (700ms, power2.inOut) — icons interpolate between by-condition and by-test-result layouts with coordinated label crossfade. Tree displays domain labels above root and first-level nodes, cross-branch combination persistently shown. All six scenarios, both display modes, both formats, and both grouping states verified working across N values 100–1000. Next: Layer 4 remaining subtasks (tree construction animation, format-switching cross-fade, animation discipline review).
 
 ---
 
@@ -323,12 +323,34 @@ Gap pixel offset in Step 7 of `computeLayout` was applied based on grid column/r
 
 ### Layer 4 — Animation
 
-**4.1: Regrouping animation**
-- GSAP integration for icon array position interpolation between grouping layouts
-- All icons animate simultaneously with configurable easing and duration
-- Label fade transitions coordinated with icon movement (old labels fade out, new labels fade in as icons settle)
-- Reverse transition supported (regroup ↔ un-regroup)
-- **Status:** Not started
+**4.1: Regrouping animation** ✓
+
+**What was done:**
+- GSAP-based regrouping animation in `IconArray.tsx`. When `animateTransitions` prop is true, grouping state changes trigger smooth position interpolation instead of hard snap.
+- Single progress tween architecture for performance: one GSAP tween drives a `{ value: 0→1 }` object, and `onUpdate` batch-sets all icon `x`/`y` attributes per frame. This avoids creating 1000 individual GSAP tweens — a single tween computes all positions each frame, keeping the animation smooth at N=1000.
+- Both label sets (by-condition and by-test-result) always rendered in the DOM, wrapped in `<g>` elements with opacity control. During animation, GSAP crossfades: source labels fade out (0–40% of duration), target labels fade in (60–100% of duration), creating a brief both-hidden gap during the fastest icon movement.
+- Ref collection via callback refs on each `<rect>` element, stored in a `Map<number, SVGRectElement>`. GSAP accesses DOM elements directly through these refs.
+- `useLayoutEffect` handles the animation trigger: runs after React's DOM update but before browser paint, immediately sets icon positions to source layout positions (overriding React's target-position render), then starts the GSAP timeline. The user never sees a flash to target positions.
+- Animation parameters: 700ms duration, `power2.inOut` easing. Configurable via constants (`REGROUP_DURATION`, `REGROUP_EASE`).
+- Reverse transitions work by natural symmetry: clicking the toggle again triggers a new animation from the current state back to the previous state. The same code path handles both directions.
+- `MainArea` passes `animateTransitions` to `IconArray`. The prop defaults to `false` for backwards compatibility — existing consumers (tests, future Part 4) get instant snapping unless they opt in.
+- Animation discipline: slider drag changes `regionA`/`dualLayout` which is in the effect's dependency array — the cleanup function kills any running timeline, and the effect re-runs but returns early (groupingState unchanged). Icons snap to new data-driven positions. Scenario changes and N changes also kill running animations via the same mechanism.
+- Mid-animation toggle: kills the current timeline and starts a fresh animation from the previous state's positions to the new target. For the two-state toggle, this produces a natural snap-to-source-then-animate-to-target behavior.
+
+**Building-phase decisions resolved:**
+- **Animation duration:** 700ms. Tested at N=1000 mammography — long enough to track individual icon movement (the 89 FP icons flowing to join 9 TP icons is clearly visible), short enough not to feel sluggish.
+- **Label crossfade timing:** Source labels start fading immediately (first 40% = 280ms), target labels start fading in at 60% (last 40% = 280ms). The ~140ms gap where both are dim prevents a jarring label swap mid-movement and draws attention to the spatial transformation.
+- **Batch position update vs. 1000 individual tweens:** Batch approach chosen. A single GSAP tween with `onUpdate` that loops through all icons and calls `setAttribute` is simpler and avoids the overhead of GSAP managing 1000 concurrent tween instances. GSAP handles the timing/easing; the loop handles the spatial interpolation.
+
+**Spec divergences:** None. The implementation follows the spec: GSAP for element-level animation via refs, timeline coordination for multi-phase transitions, both directions supported, instant state setting preserved alongside animation.
+
+**Forward-looking notes:**
+- The `animateTransitions` prop is a simple boolean — it controls whether grouping state changes animate. Subtask 4.4 (animation discipline) is already handled by the `useLayoutEffect` dependency on `dualLayout`: data changes kill the timeline. If more granular animation control is needed (e.g., "animate this specific transition but not that one"), the prop could be extended to a callback or enum.
+- The single-progress-tween pattern (one GSAP tween driving batch DOM updates via `onUpdate`) could be reused for icon array construction-step animation (subtask 4.2) — the same architecture works for batch colour transitions.
+- Both label `<g>` groups are always in the DOM (one at opacity 0). This adds negligible rendering cost (invisible SVG groups with a few text elements) but avoids mount/unmount cycles during animation.
+- The `useLayoutEffect` depends on `[groupingState, animateTransitions, dualLayout]`. If `dualLayout` changes (data or container resize), any running animation is killed and icons snap to their new positions — this is correct behavior since the spatial layout has fundamentally changed.
+
+- **Status:** Complete
 - **Verify:** Click regrouping toggle → smooth icon movement with label transitions; reverse works; mammography at $N = 1000$ performs smoothly
 
 **4.2: Tree construction and combination animations**
@@ -430,3 +452,17 @@ Also updated `Our Plan + Status.md`:
 
 Also updated `Our Plan + Status.md`:
 - Updated "Next steps" paragraph and status summary to reflect that Layers 0–2 are complete and Layer 3 is next.
+
+**2026-03-28 — Post-Layer 3 harmonisation.** Reconciled accumulated spec divergences and building-phase decision resolutions from subtasks 3.1, 3.2, and 3.3 with the Implementation Details doc. (Subtask 3.3 had no spec divergences — it was a verification pass.) Changes made:
+
+1. **Tree node domain labels — integration decision resolved:** Updated the implementation note in the terminology model's "domain labels" section (previously flagged as a Layer 3 integration decision). Resolution: above-node text annotations on root and first-level nodes only; leaf nodes excluded (redundant with parent). Above-node text chosen over inside-node compound to keep nodes compact. Includes forward pointer to Layer 5.4 evaluation of leaf-level domain labels.
+2. **Part 3 current status:** Updated from "building-phase decisions to be resolved" to reflect that Layer 3 is built and verified, with remaining items (animation, responsive, polish) identified.
+3. **Building-phase decisions — resolutions documented:** Updated the 13-item building-phase decisions list with resolutions for each item resolved during Layer 3 coding: sidebar width (320px), problem statement always visible, segmented controls for toggles, dropdown scenario selector, regrouping toggle placement (toolbar, contextual) and wording ("Group by: Condition / Test Result"), derived results styling (card with coloured accent), format selector (tab-style). Remaining items (responsive breakpoints, animation coordination, Bayes formula toggle, hover tooltips, first-time affordance) carry forward to Layers 4–5.
+4. **Initial state loading:** Added implementation note documenting direct import of mammography constant rather than dispatching SET_SCENARIO on first render (avoids flash of empty state).
+5. **HTML-context KaTeX component:** Added implementation note documenting the separate `KaTeXInline` component for HTML-context rendering (sidebar, derived results) vs. the SVG-context `KaTeXLabel`.
+
+Also updated `Our Plan + Status.md`:
+- Updated "Next steps" paragraph to reflect Layers 0–3 complete and Layer 4 next.
+- Updated Part 3 status row from "Core decisions confirmed — ready to build" to "Complete (Layer 3 built)" with summary of resolved decisions.
+- Updated "in-between layer" paragraph to reflect Part 3 is built.
+- Updated summary line to reflect Layer 3 complete.
