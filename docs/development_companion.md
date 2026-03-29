@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layers 0–4 complete, Layer 5 in progress (5.1 responsive layout done, 5.3 edge cases done). The exploration mode is a fully working integrated tool with animation: sidebar with parameter controls (Y2 format in frequency mode, KaTeX probability notation in probability mode, Bayesian parentheticals), top strip with scenario selector and display mode toggle, and main area with icon array and frequency tree. Display mode toggle switches all three persistent visibility layers simultaneously with a coordinated cross-fade animation (300ms total, GSAP). Format selector switches between icon array and frequency tree. Regrouping toggle triggers smooth GSAP animation (700ms, power2.inOut) — icons interpolate between by-condition and by-test-result layouts with coordinated label crossfade. Tree displays domain labels above root and first-level nodes, cross-branch combination persistently shown. All six scenarios, both display modes, both formats, and both grouping states verified working across N values 100–1000. Animation discipline verified: slider drag produces direct updates only (no GSAP), discrete state changes trigger appropriate animations, cross-animation conflicts handled gracefully. Tree construction/combination animation (4.2) deferred to Part 4. Responsive layout (5.1): single breakpoint at 768px, sidebar stacks above vis as compact horizontal band with 3-column slider grid and hidden descriptions. Edge case handling (5.3): contextual notes for zero-from-rounding, small N_D, and N_T+=0; transient N-change notification when base rate snaps. Next: 5.4a (hover tooltips), 5.4b (Bayes' rule formula toggle), 5.2 (accessibility), 5.4c (remaining polish).
+Layers 0–4 complete, Layer 5 in progress (5.1 responsive layout done, 5.3 edge cases done, 5.4a hover tooltips done). The exploration mode is a fully working integrated tool with animation: sidebar with parameter controls (Y2 format in frequency mode, KaTeX probability notation in probability mode, Bayesian parentheticals), top strip with scenario selector and display mode toggle, and main area with icon array and frequency tree. Display mode toggle switches all three persistent visibility layers simultaneously with a coordinated cross-fade animation (300ms total, GSAP). Format selector switches between icon array and frequency tree. Regrouping toggle triggers smooth GSAP animation (700ms, power2.inOut) — icons interpolate between by-condition and by-test-result layouts with coordinated label crossfade. Tree displays domain labels above root and first-level nodes, cross-branch combination persistently shown. All six scenarios, both display modes, both formats, and both grouping states verified working across N values 100–1000. Animation discipline verified: slider drag produces direct updates only (no GSAP), discrete state changes trigger appropriate animations, cross-animation conflicts handled gracefully. Tree construction/combination animation (4.2) deferred to Part 4. Responsive layout (5.1): single breakpoint at 768px, sidebar stacks above vis as compact horizontal band with 3-column slider grid and hidden descriptions. Edge case handling (5.3): contextual notes for zero-from-rounding, small N_D, and N_T+=0; transient N-change notification when base rate snaps. Hover tooltips (5.4a): compound label composition lines show expanded structural abbreviations with domain vocabulary on hover via SVG `<title>` elements. Next: 5.4b (Bayes' rule formula toggle), 5.2 (accessibility), 5.4c (remaining polish).
 
 ---
 
@@ -467,11 +467,27 @@ Construction state stepping (RootOnly → FirstBranch → ConditionPositiveSecon
 - **Status:** Complete
 - **Verify:** Set sensitivity=0% and FPR=0% → posterior shows degenerate message in sidebar and tree bracket. Set N=100, base rate=1%, sensitivity=15% → zero-from-rounding note on sensitivity slider. Set N=100, base rate=1% → small N_D note on base rate slider. Set N=1000, base rate=0.3%, then switch to N=100 → transient notification shows "Base rate adjusted from 0.3% to 1%". Drag sensitivity slider at N_D=10 → count updates at thresholds, rate changes smoothly.
 
-**5.4a: Hover tooltips on compound labels**
-- Vocabulary bridging for structural abbreviations (TP, FN, FP, TN) in icon array compound labels
-- On hover, expand "TP: 9" → "True Positive — has the disease and tested positive: 9" (or domain-equivalent)
-- Labels are hoverable at all N values (unlike icons, which are too small at high N)
-- **Status:** Not started
+**5.4a: Hover tooltips on compound labels** ✓
+
+**What was done:**
+- SVG `<title>` elements added to compound label composition lines (the "(TP: 9, FN: 1)" text). On hover, the browser displays a native tooltip expanding each structural abbreviation with its full name and scenario-specific domain description.
+- `generateTooltipDescriptions` function produces domain-adapted descriptions for all four groups: e.g., mammography TP → "True Positive — have the disease and test positive"; spam TP → "True Positive — are spam and are flagged". Uses `ScenarioDefinition` vocabulary directly, with `DEFAULT_VOCABULARY` fallback for null scenarios.
+- `buildCompositionTooltip` parses the composition string (e.g., "(TP: 9, FN: 1)") and expands each abbreviation into a multi-line tooltip with descriptions and values.
+- `scenarioVocabulary` prop threaded through `ExplorationMode` → `MainArea` → `IconArray`. Tooltip descriptions memoised per scenario change.
+- Composition text elements styled with `cursor: help` when tooltips are present, signalling interactivity.
+- Both grouping states (by-condition and by-test-result) have tooltips on their respective composition lines. Both display modes (frequency and probability) supported — the tooltip expands whatever values the composition line contains (counts or percentages).
+- 11 unit tests: `generateTooltipDescriptions` for mammography, spam filter, factory inspection, and null scenario; `buildCompositionTooltip` for all four composition types (TP+FN, FP+TN, TP+FP, FN+TN), percentage values, stripped parens, and cross-scenario vocabulary.
+
+**Spec divergences:**
+- SVG `<title>` elements chosen over a custom tooltip component. The spec recommended "SVG title attributes or a lightweight tooltip component" — `<title>` was chosen for simplicity (zero additional DOM, no positioning logic, no z-index concerns within SVG). The trade-off is less control over tooltip styling/positioning (browser-native tooltip appearance varies), but the content is multi-line text that doesn't need rich formatting. If richer tooltips are needed later, the `buildCompositionTooltip` function can be reused with a custom component.
+- Tooltip descriptions use plural domain vocabulary ("have the disease and test positive") rather than singular ("has the disease and tests positive"). This matches the compound labels' context — the labels describe groups of icons (plural subjects), not individual cases.
+
+**Forward-looking notes:**
+- The `generateTooltipDescriptions` and `buildCompositionTooltip` functions are exported and pure — they can be reused by a glossary component (5.4c) or any other consumer that needs structural abbreviation expansion.
+- The `scenarioVocabulary` prop on `IconArray` is optional (defaults to null/default vocabulary). Existing test consumers don't need to provide it.
+
+- **Status:** Complete
+- **Verify:** Hover over a composition line (e.g., "(TP: 9, FN: 1)" on mammography) → browser tooltip shows "True Positive — have the disease and test positive: 9" / "False Negative — have the disease but test negative: 1". Switch to spam filter → tooltip shows "are spam and are flagged" / "are spam but reach the inbox". Switch grouping to "Test Result" → test-result composition lines also show tooltips. `cursor: help` on composition text.
 
 **5.4b: Bayes' rule formula toggle**
 - Click-to-reveal in probability mode only

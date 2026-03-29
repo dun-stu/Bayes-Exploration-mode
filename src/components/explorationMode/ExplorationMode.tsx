@@ -161,6 +161,7 @@ export function ExplorationMode() {
           groupingState={groupingState}
           onGroupingChange={setGroupingState}
           contentRef={visContentRef}
+          scenarioVocabulary={parameters.scenarioVocabulary}
         />
       </div>
     </div>

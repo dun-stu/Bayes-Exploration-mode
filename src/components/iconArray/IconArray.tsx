@@ -20,8 +20,9 @@ import type {
   DataPackageRegionB,
   ByConditionLabels,
   ByTestResultLabels,
+  ScenarioDefinition,
 } from '../../types';
-import { IconArrayConstructionState, GroupingState, DisplayMode } from '../../types';
+import { IconArrayConstructionState, GroupingState, DisplayMode, DEFAULT_VOCABULARY } from '../../types';
 import { ICON_COLORS } from '../../constants';
 import {
   computeDualLayout,
@@ -50,6 +51,8 @@ interface IconArrayProps {
   displayMode?: DisplayMode;
   /** When true, grouping state changes trigger GSAP animation instead of instant snap. */
   animateTransitions?: boolean;
+  /** Scenario vocabulary for tooltip generation. Null uses default vocabulary. */
+  scenarioVocabulary?: ScenarioDefinition | null;
 }
 
 // ===== Construction State → Colour Logic =====
@@ -219,6 +222,65 @@ function buildFullCompoundLabel(
   };
 }
 
+// ===== Tooltip Descriptions =====
+
+/**
+ * Expanded descriptions for each structural abbreviation (TP, FN, FP, TN),
+ * bridging structural → domain vocabulary for hover tooltips.
+ */
+export interface GroupTooltipDescriptions {
+  TP: string;
+  FN: string;
+  FP: string;
+  TN: string;
+}
+
+/**
+ * Generate tooltip descriptions using scenario-specific domain vocabulary.
+ * Each description expands the structural abbreviation with its full name
+ * and a domain-specific description of what the group means.
+ *
+ * Example (mammography): TP → "True Positive — have the disease and test positive"
+ * Example (spam): TP → "True Positive — are spam and are flagged"
+ */
+export function generateTooltipDescriptions(
+  scenario: ScenarioDefinition | null,
+): GroupTooltipDescriptions {
+  const v = scenario ?? DEFAULT_VOCABULARY;
+  return {
+    TP: `True Positive — ${v.conditionName} and ${v.testPositiveName}`,
+    FN: `False Negative — ${v.conditionName} but ${v.testNegativeName}`,
+    FP: `False Positive — ${v.conditionNegativeName} but ${v.testPositiveName}`,
+    TN: `True Negative — ${v.conditionNegativeName} and ${v.testNegativeName}`,
+  };
+}
+
+/**
+ * Build a tooltip string for a composition line by expanding each abbreviation.
+ * Parses "TP: 9, FN: 1" → multi-line tooltip with full descriptions and counts.
+ */
+export function buildCompositionTooltip(
+  compositionLine: string,
+  descriptions: GroupTooltipDescriptions,
+): string {
+  // Strip outer parens if present: "(TP: 9, FN: 1)" → "TP: 9, FN: 1"
+  const inner = compositionLine.replace(/^\(|\)$/g, '');
+  // Split on ", " to get individual entries like "TP: 9"
+  const parts = inner.split(', ');
+  const lines: string[] = [];
+  for (const part of parts) {
+    const colonIdx = part.indexOf(':');
+    if (colonIdx < 0) continue;
+    const abbrev = part.substring(0, colonIdx).trim() as keyof GroupTooltipDescriptions;
+    const value = part.substring(colonIdx + 1).trim();
+    const desc = descriptions[abbrev];
+    if (desc) {
+      lines.push(`${desc}: ${value}`);
+    }
+  }
+  return lines.join('\n');
+}
+
 // ===== Region Bounding Boxes =====
 
 interface RegionBounds {
@@ -288,6 +350,7 @@ export function IconArray({
   groupingState = GroupingState.GroupedByCondition,
   displayMode = DisplayMode.Frequency,
   animateTransitions = false,
+  scenarioVocabulary = null,
 }: IconArrayProps) {
   const isByCondition = groupingState === GroupingState.GroupedByCondition;
 
@@ -318,6 +381,12 @@ export function IconArray({
   const testResultLabelContent = useMemo(
     () => buildByTestResultLabelContent(modeLabels.byTestResult, constructionState),
     [modeLabels, constructionState],
+  );
+
+  // ── Tooltip descriptions from scenario vocabulary ──
+  const tooltipDescriptions = useMemo(
+    () => generateTooltipDescriptions(scenarioVocabulary),
+    [scenarioVocabulary],
   );
 
   // ── Region positions for BOTH grouping states (for label bounds) ──
@@ -514,6 +583,7 @@ export function IconArray({
             fontWeight={fontWeight}
             containerWidth={width}
             yOffset={0}
+            tooltipDescriptions={tooltipDescriptions}
           />
         )}
         {conditionLabelContent.region2 && condR2Bounds && (
@@ -524,6 +594,7 @@ export function IconArray({
             fontWeight={fontWeight}
             containerWidth={width}
             yOffset={condR2YOffset}
+            tooltipDescriptions={tooltipDescriptions}
           />
         )}
       </g>
@@ -543,6 +614,7 @@ export function IconArray({
             fontWeight={fontWeight}
             containerWidth={width}
             yOffset={0}
+            tooltipDescriptions={tooltipDescriptions}
           />
         )}
         {testResultLabelContent.region2 && testR2Bounds && (
@@ -553,6 +625,7 @@ export function IconArray({
             fontWeight={fontWeight}
             containerWidth={width}
             yOffset={testR2YOffset}
+            tooltipDescriptions={tooltipDescriptions}
           />
         )}
       </g>
@@ -569,9 +642,10 @@ interface CompoundLabelProps {
   fontWeight: number;
   containerWidth: number;
   yOffset: number;
+  tooltipDescriptions?: GroupTooltipDescriptions;
 }
 
-function CompoundLabel({ content, bounds, fontSize, fontWeight, containerWidth, yOffset }: CompoundLabelProps) {
+function CompoundLabel({ content, bounds, fontSize, fontWeight, containerWidth, yOffset, tooltipDescriptions }: CompoundLabelProps) {
   const lineHeight = fontSize * 1.3;
   const compositionFontSize = fontSize * 0.85;
   const totalHeight = content.compositionLine
@@ -589,6 +663,11 @@ function CompoundLabel({ content, bounds, fontSize, fontWeight, containerWidth, 
     Math.max(mainWidth, compositionWidth) + LABEL_PADDING_H * 2,
     containerWidth - x,
   );
+
+  // Build tooltip text for the composition line
+  const compositionTooltip = content.compositionLine && tooltipDescriptions
+    ? buildCompositionTooltip(content.compositionLine, tooltipDescriptions)
+    : undefined;
 
   return (
     <g className="compound-label">
@@ -620,7 +699,9 @@ function CompoundLabel({ content, bounds, fontSize, fontWeight, containerWidth, 
           fontWeight={fontWeight - 100}
           fontFamily="system-ui, sans-serif"
           fill="#616161"
+          style={{ cursor: compositionTooltip ? 'help' : undefined }}
         >
+          {compositionTooltip && <title>{compositionTooltip}</title>}
           {content.compositionLine}
         </text>
       )}

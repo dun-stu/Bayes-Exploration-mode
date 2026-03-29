@@ -10,7 +10,7 @@
  */
 
 import { useRef, useState, useEffect } from 'react';
-import type { DataPackageRegionA, DataPackageRegionB } from '../../types';
+import type { DataPackageRegionA, DataPackageRegionB, ScenarioDefinition } from '../../types';
 import { GroupingState, DisplayMode, TreeCombinationState } from '../../types';
 import { IconArray } from '../iconArray/IconArray';
 import { FrequencyTree } from '../frequencyTree/FrequencyTree';
@@ -27,6 +27,8 @@ interface MainAreaProps {
   onGroupingChange: (state: GroupingState) => void;
   /** Ref for the cross-fade animation target (visualisation content). */
   contentRef?: React.RefObject<HTMLDivElement | null>;
+  /** Scenario vocabulary for icon array tooltip generation. */
+  scenarioVocabulary?: ScenarioDefinition | null;
 }
 
 export function MainArea({
@@ -38,6 +40,7 @@ export function MainArea({
   groupingState,
   onGroupingChange,
   contentRef,
+  scenarioVocabulary,
 }: MainAreaProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -117,6 +120,7 @@ export function MainArea({
               groupingState={groupingState}
               displayMode={displayMode}
               animateTransitions
+              scenarioVocabulary={scenarioVocabulary}
             />
           ) : (
             <FrequencyTree
