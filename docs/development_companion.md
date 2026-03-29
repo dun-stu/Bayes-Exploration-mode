@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layers 0–4 complete, Layer 5 in progress (5.1 responsive layout done). The exploration mode is a fully working integrated tool with animation: sidebar with parameter controls (Y2 format in frequency mode, KaTeX probability notation in probability mode, Bayesian parentheticals), top strip with scenario selector and display mode toggle, and main area with icon array and frequency tree. Display mode toggle switches all three persistent visibility layers simultaneously with a coordinated cross-fade animation (300ms total, GSAP). Format selector switches between icon array and frequency tree. Regrouping toggle triggers smooth GSAP animation (700ms, power2.inOut) — icons interpolate between by-condition and by-test-result layouts with coordinated label crossfade. Tree displays domain labels above root and first-level nodes, cross-branch combination persistently shown. All six scenarios, both display modes, both formats, and both grouping states verified working across N values 100–1000. Animation discipline verified: slider drag produces direct updates only (no GSAP), discrete state changes trigger appropriate animations, cross-animation conflicts handled gracefully. Tree construction/combination animation (4.2) deferred to Part 4. Responsive layout (5.1): single breakpoint at 768px, sidebar stacks above vis as compact horizontal band with 3-column slider grid and hidden descriptions. Next: remaining Layer 5 subtasks (accessibility, edge cases, polish).
+Layers 0–4 complete, Layer 5 in progress (5.1 responsive layout done, 5.3 edge cases done). The exploration mode is a fully working integrated tool with animation: sidebar with parameter controls (Y2 format in frequency mode, KaTeX probability notation in probability mode, Bayesian parentheticals), top strip with scenario selector and display mode toggle, and main area with icon array and frequency tree. Display mode toggle switches all three persistent visibility layers simultaneously with a coordinated cross-fade animation (300ms total, GSAP). Format selector switches between icon array and frequency tree. Regrouping toggle triggers smooth GSAP animation (700ms, power2.inOut) — icons interpolate between by-condition and by-test-result layouts with coordinated label crossfade. Tree displays domain labels above root and first-level nodes, cross-branch combination persistently shown. All six scenarios, both display modes, both formats, and both grouping states verified working across N values 100–1000. Animation discipline verified: slider drag produces direct updates only (no GSAP), discrete state changes trigger appropriate animations, cross-animation conflicts handled gracefully. Tree construction/combination animation (4.2) deferred to Part 4. Responsive layout (5.1): single breakpoint at 768px, sidebar stacks above vis as compact horizontal band with 3-column slider grid and hidden descriptions. Edge case handling (5.3): contextual notes for zero-from-rounding, small N_D, and N_T+=0; transient N-change notification when base rate snaps. Next: 5.4a (hover tooltips), 5.4b (Bayes' rule formula toggle), 5.2 (accessibility), 5.4c (remaining polish).
 
 ---
 
@@ -446,21 +446,42 @@ Construction state stepping (RootOnly → FirstBranch → ConditionPositiveSecon
 - **Status:** Not started
 - **Verify:** Screen reader walkthrough; keyboard-only navigation; colour-blind simulation check
 
-**5.3: Edge cases and degenerate states**
-- $N_{T^+} = 0$ display (contextual message from template system)
-- Zero-from-rounding soft contextual notes
-- Sticky slider UX (subtle indication near thresholds where count changes)
-- $N$-change notification when base rate snaps to nearest valid step
-- Small $N_D$ behaviour across all visualisations
-- **Status:** Not started
-- **Verify:** Set parameters to trigger each edge case; contextual messages appear correctly
+**5.3: Edge cases and degenerate states** ✓
 
-**5.4: Further polish (scope TBD based on earlier layers)**
+**What was done:**
+- **$N_{T^+} = 0$ display:** Verified that the template system's degenerate posterior strings render correctly in the sidebar's derived results area. Frequency mode shows "No people test positive with these parameters — the posterior is undefined." Probability mode shows "$P(T^+) = 0$ — no positive tests. Posterior is undefined." Fixed the probability-mode degenerate string — the original contained raw LaTeX (`\mid`) in a plain-text description portion, which would render as literal backslash text. Replaced with clean prose ("Posterior is undefined.") since the KaTeX notation portion (`P(T^+) = 0`) already conveys the mathematical state. Same fix applied to the `generateDegenerateMessages` helper for consistency. Tree cross-branch combination handles this case correctly (both frequency and probability modes).
+- **Zero-from-rounding contextual notes:** Soft contextual note appears below the sensitivity slider when `sensitivity > 0` but `nTP === 0` (e.g., N_D=3, sensitivity=15% → round(0.45)=0). Analogous note for FPR slider when `fpr > 0` but `nFP === 0`. Messages adapted per parameter: sensitivity note mentions "detected cases", FPR note mentions "false positives". Notes are persistent while the condition holds, disappearing when parameters change to a non-degenerate state.
+- **Small $N_D$ contextual note:** Soft contextual note appears below the base rate slider when $N_D \leq 3$ (and $N_D > 0$). Threshold of 3 chosen because at $N_D \leq 3$, sensitivity is effectively quantised to very coarse steps (33%/50%/100% at $N_D = 3$; binary at $N_D = 1$).
+- **$N$-change notification:** Transient notification appears below the N selector when switching N presets forces the base rate to snap to a different value. Shows the before/after rates: "Base rate adjusted from 0.3% to 1% at this population size." Notification enters with a subtle slide-down animation (CSS keyframe) and auto-dismisses after 4 seconds. Also clears on any subsequent base rate change or scenario change (no stale notifications). Timer properly cleaned up on component unmount.
+- **Sticky slider UX:** Verified by code reading that the Y2 format (count-emphasized display) already handles this correctly. The count updates at rounding thresholds while the rate changes smoothly — the Y2 format makes this visible and natural. No additional sticky-slider indicators implemented, per spec guidance ("the stickiness is the natural frequency framework working as intended").
+- **Contextual note styling:** Warm informational style — small text (11px), amber-yellow background (#fff8e1), brown text (#795548), left border accent (#ffb74d). Feels like the tool explaining itself, not like an error state. Responsive: slightly smaller (10px) in compact mode.
+
+**Spec divergences:**
+- Probability-mode degenerate posterior string changed from `"P(T^+) = 0 — no positive tests. P(D \mid T^+) is undefined."` to `"P(T^+) = 0 — no positive tests. Posterior is undefined."`. The original contained raw LaTeX in a string that the sidebar renders as plain text (the `parseDerivedResult` function splits on ` — ` and renders the second part without KaTeX). The LaTeX notation is already conveyed by the first part. Same change applied to `generateDegenerateMessages().nTestPosZeroProbability`.
+- Zero-from-rounding and small $N_D$ messages are inline strings in the Sidebar component rather than consuming the `generateDegenerateMessages` helper. The helper's `zeroFromRounding` message is sensitivity-specific ("the sensitivity doesn't produce any detected cases") — the FPR case needs a different message. The inline approach is simpler than extending the helper with per-parameter variants.
+
+**Forward-looking notes:**
+- The N-change notification state lives in `ExplorationMode` and is passed to `Sidebar` as a prop. If future subtasks need to show transient notifications for other events, the same pattern (state + timeout ref + prop) can be reused.
+- `snapBaseRate` is now imported by `ExplorationMode` to pre-compute the snap before dispatching. This is safe because the function is pure and deterministic — the reducer applies the same snap.
+
+- **Status:** Complete
+- **Verify:** Set sensitivity=0% and FPR=0% → posterior shows degenerate message in sidebar and tree bracket. Set N=100, base rate=1%, sensitivity=15% → zero-from-rounding note on sensitivity slider. Set N=100, base rate=1% → small N_D note on base rate slider. Set N=1000, base rate=0.3%, then switch to N=100 → transient notification shows "Base rate adjusted from 0.3% to 1%". Drag sensitivity slider at N_D=10 → count updates at thresholds, rate changes smoothly.
+
+**5.4a: Hover tooltips on compound labels**
+- Vocabulary bridging for structural abbreviations (TP, FN, FP, TN) in icon array compound labels
+- On hover, expand "TP: 9" → "True Positive — has the disease and tested positive: 9" (or domain-equivalent)
+- Labels are hoverable at all N values (unlike icons, which are too small at high N)
+- **Status:** Not started
+
+**5.4b: Bayes' rule formula toggle**
+- Click-to-reveal in probability mode only
+- Shows the full Bayes' theorem decomposition: how joint probabilities decompose into prior × likelihood
+- **Status:** Not started
+
+**5.4c: Remaining polish**
 - Control styling refinement
 - Label text fine-tuning (guided by strand b wording principles in context)
 - First-time-user affordances (if needed)
-- Hover tooltips on compound labels — vocabulary bridging for structural abbreviations (evaluate once assembled UI shows whether gap is felt; see Implementation Details building-phase note)
-- Bayes' rule formula toggle (click-to-reveal, probability mode only)
 - Glossary component (could-cut)
 - **Tree leaf domain labels — evaluate whether leaves should show "Test positive"/"Test negative" above-node labels.** Currently leaf nodes have no domain labels (branch labels carry the test-result information via structural terms like "Sensitivity: 90%"). The question is whether adding explicit test-result domain labels aids novice comprehension (direct labelling reduces cognitive load per graph comprehension literature — Carpenter & Shah 1998) or adds visual clutter to an already label-dense tree. Key tension: redundant encoding vs. information overload; expertise reversal effect (novices benefit from explicit labels, but the inference from branch label to test outcome is a one-step connection that may constitute useful germane load). Consider in context of guided mode — if the construction animation scaffolds leaf meaning through sequenced appearance, static labels may be less necessary. If added, the template system would need to produce distinct leaf-level domain labels rather than repeating the parent's condition name.
 - **Status:** Not started

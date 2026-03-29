@@ -16,14 +16,18 @@
  * across all three layers, orchestrated by the useFormatCrossFade hook (4.3).
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAppState } from '../../state';
 import { DisplayMode, GroupingState } from '../../types';
+import { snapBaseRate } from '../../state/parameterState';
 import { TopStrip } from './TopStrip';
 import { Sidebar } from './Sidebar';
 import { MainArea, type VisFormat } from './MainArea';
 import { useFormatCrossFade } from './useFormatCrossFade';
 import './ExplorationMode.css';
+
+/** Duration (ms) for transient N-change notification. */
+const N_CHANGE_NOTIFICATION_DURATION = 4000;
 
 export function ExplorationMode() {
   const { parameters, dispatch, dataPackage } = useAppState();
@@ -31,6 +35,68 @@ export function ExplorationMode() {
   const [groupingState, setGroupingState] = useState<GroupingState>(
     GroupingState.GroupedByCondition,
   );
+
+  // --- N-change notification (5.3) ---
+  // Detect when switching N presets forces the base rate to snap to a different value.
+  const [nChangeNotification, setNChangeNotification] = useState<string | null>(null);
+  const nChangeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleNChange = useCallback((newN: number) => {
+    // Compute what the snapped base rate will be before dispatching
+    const currentBaseRate = parameters.baseRate;
+    const snappedBaseRate = snapBaseRate(currentBaseRate, newN);
+
+    if (Math.abs(snappedBaseRate - currentBaseRate) > 1e-9) {
+      // Base rate will change — show notification
+      const oldPct = (currentBaseRate * 100).toFixed(1).replace(/\.0$/, '');
+      const newPct = (snappedBaseRate * 100).toFixed(1).replace(/\.0$/, '');
+      setNChangeNotification(
+        `Base rate adjusted from ${oldPct}% to ${newPct}% at this population size.`,
+      );
+
+      // Clear any existing timer
+      if (nChangeTimerRef.current) clearTimeout(nChangeTimerRef.current);
+      nChangeTimerRef.current = setTimeout(() => {
+        setNChangeNotification(null);
+        nChangeTimerRef.current = null;
+      }, N_CHANGE_NOTIFICATION_DURATION);
+    } else {
+      // No snap needed — clear any existing notification
+      setNChangeNotification(null);
+      if (nChangeTimerRef.current) {
+        clearTimeout(nChangeTimerRef.current);
+        nChangeTimerRef.current = null;
+      }
+    }
+
+    dispatch({ type: 'SET_N', value: newN });
+  }, [parameters.baseRate, dispatch]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (nChangeTimerRef.current) clearTimeout(nChangeTimerRef.current);
+    };
+  }, []);
+
+  // Clear N-change notification on any other parameter change
+  const handleBaseRateChange = useCallback((value: number) => {
+    setNChangeNotification(null);
+    dispatch({ type: 'SET_PARAMETER', parameter: 'baseRate', value });
+  }, [dispatch]);
+
+  const handleSensitivityChange = useCallback((value: number) => {
+    dispatch({ type: 'SET_PARAMETER', parameter: 'sensitivity', value });
+  }, [dispatch]);
+
+  const handleFprChange = useCallback((value: number) => {
+    dispatch({ type: 'SET_PARAMETER', parameter: 'fpr', value });
+  }, [dispatch]);
+
+  const handleScenarioChange = useCallback((scenario: import('../../types').ScenarioDefinition) => {
+    setNChangeNotification(null);
+    dispatch({ type: 'SET_SCENARIO', scenario });
+  }, [dispatch]);
 
   // Format-switching cross-fade (4.3): intercepts display mode changes
   // and coordinates a fade-out → state change → fade-in across all three layers.
@@ -61,9 +127,7 @@ export function ExplorationMode() {
         scenarioId={parameters.scenarioId}
         displayMode={parameters.displayMode}
         labels={activeLabels}
-        onScenarioChange={(scenario) =>
-          dispatch({ type: 'SET_SCENARIO', scenario })
-        }
+        onScenarioChange={handleScenarioChange}
         onDisplayModeChange={handleDisplayModeChange}
         contentRef={topStripContentRef}
       />
@@ -79,19 +143,12 @@ export function ExplorationMode() {
           displayMode={parameters.displayMode}
           regionA={dataPackage.regionA}
           labels={activeLabels}
-          onNChange={(value) =>
-            dispatch({ type: 'SET_N', value })
-          }
-          onBaseRateChange={(value) =>
-            dispatch({ type: 'SET_PARAMETER', parameter: 'baseRate', value })
-          }
-          onSensitivityChange={(value) =>
-            dispatch({ type: 'SET_PARAMETER', parameter: 'sensitivity', value })
-          }
-          onFprChange={(value) =>
-            dispatch({ type: 'SET_PARAMETER', parameter: 'fpr', value })
-          }
+          onNChange={handleNChange}
+          onBaseRateChange={handleBaseRateChange}
+          onSensitivityChange={handleSensitivityChange}
+          onFprChange={handleFprChange}
           contentRef={sidebarContentRef}
+          nChangeNotification={nChangeNotification}
         />
 
         {/* Main area — visualisation (Group 3) */}

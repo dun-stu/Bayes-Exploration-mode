@@ -234,7 +234,7 @@ function generateParamDisplayProbability(a: DataPackageRegionA, v: ResolvedVocab
     const postDec = formatDecimal(a.posterior);
     posterior = String.raw`P(D \mid T^+) \approx ${postDec}` + ` — Posterior`;
   } else {
-    posterior = String.raw`P(T^+) = 0` + String.raw` — no positive tests. P(D \mid T^+) is undefined.`;
+    posterior = String.raw`P(T^+) = 0` + ` \u2014 no positive tests. Posterior is undefined.`;
   }
 
   return { baseRate, sensitivity, fpr, totalTestPositiveRate, posterior };
@@ -557,7 +557,7 @@ export interface DegenerateMessages {
 function generateDegenerateMessages(a: DataPackageRegionA, v: ResolvedVocabulary): DegenerateMessages {
   return {
     nTestPosZeroFrequency: `No ${v.populationName} ${v.testPositiveName} with these parameters — the posterior is undefined.`,
-    nTestPosZeroProbability: String.raw`P(T^+) = 0` + String.raw` — no positive tests. P(D \mid T^+) is undefined.`,
+    nTestPosZeroProbability: String.raw`P(T^+) = 0` + ` \u2014 no positive tests. Posterior is undefined.`,
     zeroFromRounding: `At this population size, the ${v.sensitivityDomainName.toLowerCase()} doesn't produce any detected cases. Try a larger population for more detail.`,
     smallND: 'The affected group is very small at this population size — try a larger N for more detail.',
   };

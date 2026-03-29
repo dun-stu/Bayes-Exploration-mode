@@ -329,6 +329,38 @@
   font-size: 14px;
 }
 
+/* ===== Contextual Notes (5.3) ===== */
+/* Soft, informational notes for edge cases and degenerate states.
+   The tool explaining itself — not error states. */
+
+.contextual-note {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #795548;
+  background: #fff8e1;
+  border-left: 2px solid #ffb74d;
+  border-radius: 0 4px 4px 0;
+  padding: 5px 8px;
+  margin-top: 4px;
+}
+
+/* Transient notification (N-change snap) — fades out after timeout.
+   The fade is handled by React state; CSS provides an entrance animation. */
+.contextual-note--transient {
+  animation: contextual-note-enter 0.3s ease-out;
+}
+
+@keyframes contextual-note-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ===== Main Area ===== */
 
 .main-area {
@@ -547,6 +579,13 @@
   /* Hide description text in compact mode — vis labels carry this info */
   .param-slider__description {
     display: none;
+  }
+
+  /* Contextual notes: smaller in compact mode */
+  .contextual-note {
+    font-size: 10px;
+    margin-top: 2px;
+    padding: 3px 6px;
   }
 
   /* --- Derived results: horizontal row, full width --- */

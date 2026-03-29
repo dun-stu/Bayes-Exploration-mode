@@ -434,7 +434,7 @@ describe('generateDegenerateMessages', () => {
 
   it('N_T+ = 0 probability message uses notation', () => {
     expect(msgs.nTestPosZeroProbability).toContain('P(T^+) = 0');
-    expect(msgs.nTestPosZeroProbability).toContain('P(D \\mid T^+) is undefined');
+    expect(msgs.nTestPosZeroProbability).toContain('Posterior is undefined');
   });
 
   it('zero-from-rounding message uses sensitivityDomainName', () => {

@@ -8,6 +8,9 @@
  *
  * Controls update live during drag. Display strings come from Region B
  * (the template system pre-formats everything).
+ *
+ * Edge case handling (5.3): contextual notes for degenerate states
+ * (zero-from-rounding, small N_D) and transient N-change notification.
  */
 
 import { DisplayMode } from '../../types';
@@ -15,6 +18,9 @@ import type { DataPackageRegionA, DisplayModeLabels } from '../../types';
 import { KaTeXInline } from './KaTeXInline';
 
 const N_PRESETS = [100, 200, 500, 1000] as const;
+
+/** Threshold for "small N_D" contextual note. */
+const SMALL_ND_THRESHOLD = 3;
 
 interface SidebarProps {
   n: number;
@@ -30,6 +36,8 @@ interface SidebarProps {
   onFprChange: (value: number) => void;
   /** Ref for the cross-fade animation target (parameter labels + derived results). */
   contentRef?: React.RefObject<HTMLDivElement | null>;
+  /** Notification message when N-change snaps the base rate. Set by parent, cleared after timeout. */
+  nChangeNotification?: string | null;
 }
 
 /**
@@ -106,12 +114,14 @@ export function Sidebar({
   sensitivity,
   fpr,
   displayMode,
+  regionA,
   labels,
   onNChange,
   onBaseRateChange,
   onSensitivityChange,
   onFprChange,
   contentRef,
+  nChangeNotification,
 }: SidebarProps) {
   const isProbability = displayMode === DisplayMode.Probability;
   const params = labels.parameterDisplayStrings;
@@ -120,6 +130,15 @@ export function Sidebar({
   const baseRateStep = 1 / n;
   const baseRateMin = baseRateStep;
   const baseRateMax = 1 - baseRateStep;
+
+  // --- Edge case detection (5.3) ---
+
+  // Zero-from-rounding: non-zero input rate produced zero count
+  const sensitivityZeroFromRounding = sensitivity > 0 && regionA.nTP === 0 && regionA.nD > 0;
+  const fprZeroFromRounding = fpr > 0 && regionA.nFP === 0 && regionA.nNotD > 0;
+
+  // Small N_D: affected group is very small
+  const smallND = regionA.nD <= SMALL_ND_THRESHOLD && regionA.nD > 0;
 
   return (
     <div className="sidebar">
@@ -145,6 +164,12 @@ export function Sidebar({
               </button>
             ))}
           </div>
+          {/* Transient N-change notification */}
+          {nChangeNotification && (
+            <div className="contextual-note contextual-note--transient">
+              {nChangeNotification}
+            </div>
+          )}
         </div>
 
         {/* Base Rate Slider */}
@@ -156,6 +181,11 @@ export function Sidebar({
           step={baseRateStep}
           value={baseRate}
           onChange={onBaseRateChange}
+          contextualNote={
+            smallND
+              ? 'The affected group is very small at this population size \u2014 try a larger N for more detail.'
+              : undefined
+          }
         />
 
         {/* Sensitivity Slider */}
@@ -167,6 +197,11 @@ export function Sidebar({
           step={0.01}
           value={sensitivity}
           onChange={onSensitivityChange}
+          contextualNote={
+            sensitivityZeroFromRounding
+              ? 'At this population size, the sensitivity doesn\u2019t produce any detected cases. Try a larger population for more detail.'
+              : undefined
+          }
         />
 
         {/* FPR Slider */}
@@ -178,6 +213,11 @@ export function Sidebar({
           step={0.01}
           value={fpr}
           onChange={onFprChange}
+          contextualNote={
+            fprZeroFromRounding
+              ? 'At this population size, the false positive rate doesn\u2019t produce any false positives. Try a larger population for more detail.'
+              : undefined
+          }
         />
 
         {/* Derived Results — visually distinguished from input controls */}
@@ -211,6 +251,7 @@ function ParameterSlider({
   step,
   value,
   onChange,
+  contextualNote,
 }: {
   displayString: string;
   isProbability: boolean;
@@ -219,6 +260,7 @@ function ParameterSlider({
   step: number;
   value: number;
   onChange: (v: number) => void;
+  contextualNote?: string;
 }) {
   if (isProbability) {
     const parsed = parseProbabilityParam(displayString);
@@ -238,6 +280,9 @@ function ParameterSlider({
           onChange={(e) => onChange(Number(e.target.value))}
         />
         <div className="param-slider__description">{parsed.description}</div>
+        {contextualNote && (
+          <div className="contextual-note">{contextualNote}</div>
+        )}
       </div>
     );
   }
@@ -258,6 +303,9 @@ function ParameterSlider({
         onChange={(e) => onChange(Number(e.target.value))}
       />
       <div className="param-slider__description">{parsed.description}</div>
+      {contextualNote && (
+        <div className="contextual-note">{contextualNote}</div>
+      )}
     </div>
   );
 }
