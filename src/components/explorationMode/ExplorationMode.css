@@ -5,7 +5,9 @@
  *   Sidebar   = parameter layer (numerical controls + derived results)
  *   Main area = visualisation layer (icon array or frequency tree)
  *
- * Desktop only for now — responsive/mobile layout is Layer 5.
+ * Responsive: single breakpoint at 768px. Below it, the sidebar stacks above
+ * the visualisation as a compact horizontal band (not collapsible — the binding
+ * constraint requires controls and vis to be simultaneously visible).
  */
 
 .exploration-mode {
@@ -436,4 +438,170 @@
   flex: 1;
   min-height: 200px;
   overflow: hidden;
+}
+
+/* ===== Responsive — narrow viewport (≤ 768px) ===== */
+/* Sidebar stacks above the visualisation as a compact horizontal band.
+   The binding constraint (simultaneous viewing of controls + vis) is preserved
+   by stacking rather than collapsing — both remain in the viewport. */
+
+@media (max-width: 768px) {
+
+  /* --- Content area: row → column --- */
+  .content-area {
+    flex-direction: column;
+  }
+
+  /* --- Top strip: tighter padding, allow wrapping --- */
+  .top-strip {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+
+  .top-strip__controls {
+    gap: 10px;
+  }
+
+  .top-strip__question {
+    font-size: 15px;
+  }
+
+  .top-strip__problem-statement {
+    font-size: 13px;
+  }
+
+  /* When the display mode toggle wraps to a new line, it should
+     align left (margin-left: auto has no effect on a wrapped item
+     that starts a new flex line, which is correct). */
+
+  /* --- Sidebar → compact horizontal band --- */
+  .sidebar {
+    width: 100%;
+    flex-shrink: 0;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 10px 12px;
+    gap: 10px;
+    overflow-y: visible;
+    overflow-x: hidden;
+  }
+
+  .sidebar__content {
+    gap: 10px;
+  }
+
+  /* Hide section labels ("Parameters", "Results") in compact mode */
+  .sidebar__section-label {
+    display: none;
+  }
+
+  /* N selector: keep horizontal, tighten spacing */
+  .n-selector {
+    gap: 4px;
+  }
+
+  .n-selector__label {
+    font-size: 12px;
+  }
+
+  .n-selector__buttons button {
+    font-size: 13px;
+    padding: 5px 0;
+  }
+
+  /* --- Parameter sliders: 3-column grid --- */
+  /* Wrap the three sliders in a CSS grid by targeting the .sidebar__content
+     flex container. The sliders are direct children of .sidebar__content,
+     positioned after .n-selector. We use a grid approach on the content
+     wrapper, with the N selector and derived results spanning full width. */
+  .sidebar__content {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px 12px;
+  }
+
+  /* N selector spans full width */
+  .n-selector {
+    grid-column: 1 / -1;
+  }
+
+  /* Each param-slider takes one column */
+  .param-slider {
+    min-width: 0; /* prevent overflow */
+  }
+
+  .param-slider__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  .param-slider__name {
+    font-size: 11px;
+  }
+
+  .param-slider__value {
+    font-size: 12px;
+  }
+
+  /* Hide description text in compact mode — vis labels carry this info */
+  .param-slider__description {
+    display: none;
+  }
+
+  /* --- Derived results: horizontal row, full width --- */
+  .derived-results {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    gap: 8px;
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .derived-result {
+    flex: 1;
+    padding: 6px 8px;
+  }
+
+  .derived-result__label {
+    font-size: 10px;
+  }
+
+  .derived-result__value {
+    font-size: 13px;
+  }
+
+  /* --- Main area: full width below --- */
+  .main-area {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .main-area__toolbar {
+    padding: 6px 12px;
+    gap: 8px;
+  }
+
+  .format-selector button {
+    font-size: 12px;
+    padding: 5px 12px;
+  }
+
+  .grouping-toggle {
+    margin-left: 8px;
+  }
+
+  .grouping-toggle__label {
+    font-size: 11px;
+    padding: 0 6px 0 4px;
+  }
+
+  .grouping-toggle button {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .main-area__vis-container {
+    min-height: 150px;
+  }
 }

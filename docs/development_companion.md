@@ -24,7 +24,7 @@ React + GSAP + SVG + Vite.
 Parts 1 and 2 provide the foundation (rendering + data). Part 3 (exploration mode) integrates them into a usable interface. Part 4 (guided/practice modes) layers pedagogy on top. Part 5 (scenario content) is already specified and feeds into Part 2's data structures.
 
 ### Current state
-Layers 0–4 complete. The exploration mode is a fully working integrated tool with animation: sidebar with parameter controls (Y2 format in frequency mode, KaTeX probability notation in probability mode, Bayesian parentheticals), top strip with scenario selector and display mode toggle, and main area with icon array and frequency tree. Display mode toggle switches all three persistent visibility layers simultaneously with a coordinated cross-fade animation (300ms total, GSAP). Format selector switches between icon array and frequency tree. Regrouping toggle triggers smooth GSAP animation (700ms, power2.inOut) — icons interpolate between by-condition and by-test-result layouts with coordinated label crossfade. Tree displays domain labels above root and first-level nodes, cross-branch combination persistently shown. All six scenarios, both display modes, both formats, and both grouping states verified working across N values 100–1000. Animation discipline verified: slider drag produces direct updates only (no GSAP), discrete state changes trigger appropriate animations, cross-animation conflicts handled gracefully. Tree construction/combination animation (4.2) deferred to Part 4. Next: Layer 5 (polish and edge cases).
+Layers 0–4 complete, Layer 5 in progress (5.1 responsive layout done). The exploration mode is a fully working integrated tool with animation: sidebar with parameter controls (Y2 format in frequency mode, KaTeX probability notation in probability mode, Bayesian parentheticals), top strip with scenario selector and display mode toggle, and main area with icon array and frequency tree. Display mode toggle switches all three persistent visibility layers simultaneously with a coordinated cross-fade animation (300ms total, GSAP). Format selector switches between icon array and frequency tree. Regrouping toggle triggers smooth GSAP animation (700ms, power2.inOut) — icons interpolate between by-condition and by-test-result layouts with coordinated label crossfade. Tree displays domain labels above root and first-level nodes, cross-branch combination persistently shown. All six scenarios, both display modes, both formats, and both grouping states verified working across N values 100–1000. Animation discipline verified: slider drag produces direct updates only (no GSAP), discrete state changes trigger appropriate animations, cross-animation conflicts handled gracefully. Tree construction/combination animation (4.2) deferred to Part 4. Responsive layout (5.1): single breakpoint at 768px, sidebar stacks above vis as compact horizontal band with 3-column slider grid and hidden descriptions. Next: remaining Layer 5 subtasks (accessibility, edge cases, polish).
 
 ---
 
@@ -410,14 +410,33 @@ Construction state stepping (RootOnly → FirstBranch → ConditionPositiveSecon
 
 ### Layer 5 — Polish and Edge Cases
 
-**5.1: Responsive layout**
-- Sidebar → stacked transition at narrow/mobile breakpoints
-- Parameter controls adapt to compact horizontal band or collapsible section
-- Visualisation takes full width below
-- Format selector and contextual controls adapt
-- Building-phase decisions to resolve here: exact breakpoints, mobile control layout
-- **Status:** Not started
-- **Verify:** Test at various viewport widths; controls and visualisation remain usable
+**5.1: Responsive layout** ✓
+
+**What was done:**
+- Added a single CSS media query breakpoint at `max-width: 768px` in `ExplorationMode.css`. Below this width, the layout restructures from sidebar-beside-vis to a stacked layout where the parameter controls form a compact horizontal band above the full-width visualisation.
+- **Content area** flex direction changes from `row` to `column`, stacking sidebar above main area.
+- **Sidebar** loses its fixed 320px width, becomes full-width. Internal content reorganises via CSS grid: N selector spans full width, three parameter sliders arranged in a 3-column grid, derived results displayed side-by-side in a horizontal row.
+- **Slider descriptions hidden** (`display: none`) in compact mode — the Y2 format text ("10 out of 1,000 have the disease") is removed to save ~200px of vertical height. The visualisation labels carry this information.
+- **Section labels** ("Parameters", "Results") hidden in compact mode.
+- **Main area** required `min-height: 0` and `overflow: hidden` to prevent the flex child from expanding unboundedly in column-direction layout (the default `min-height: auto` caused the vis container to grow to content size rather than being constrained by the flex parent).
+- Top strip, toolbar, and all controls receive tighter padding and slightly smaller font sizes at the narrow breakpoint.
+- All existing animation systems preserved: cross-fade refs (`topStripContentRef`, `sidebarContentRef`, `visContentRef`) remain on their original DOM elements. CSS-only changes — no JSX modifications.
+
+**Building-phase decisions resolved:**
+- **Breakpoint:** Single breakpoint at 768px. Above it, the desktop layout is unchanged. Below it, the stacked compact band layout activates.
+- **Stacking, not collapsing:** The spec offers "stacks above or collapses" but the binding constraint (simultaneous viewing of controls and vis) rules out collapsing. Stacking preserves simultaneous visibility — at 768px × 900px, the compact band (~230px) + vis (~500px) both fit comfortably in the viewport.
+- **No second breakpoint for phones:** The stacked layout degrades gracefully down to ~400px. At very narrow widths, the 3-column slider grid becomes tight but remains functional. No dedicated phone treatment — the tool targets desktop/laptop educational settings.
+- **Slider descriptions hidden rather than compressed:** Hiding the Y2 descriptions (rather than making them smaller or collapsible) was chosen for simplicity and maximum vertical space savings. The vis itself shows the counts, so the information is not lost.
+
+**Spec divergences:**
+- None. The spec says "sidebar stacks above or collapses, with the parameter controls becoming a compact horizontal band or collapsible section above the visualisation" — we implemented the stacking/compact-band variant, which is one of the offered options. The breakpoint value (768px) and compact layout specifics (3-column grid, hidden descriptions) were building-phase decisions as intended.
+
+**Forward-looking notes:**
+- The `min-height: 0` fix on `.main-area` at the narrow breakpoint is essential for correct flex behaviour in column direction. If any future changes add nested flex containers in the content area column layout, they may need the same treatment.
+- The 3-column slider grid works well at 600px+ but becomes tight below ~450px. If a phone-specific experience is ever needed, the sliders would need to stack vertically (single column), but this is not currently warranted.
+
+- **Status:** Complete
+- **Verify:** Test at various viewport widths; controls and visualisation remain usable. Specific widths to check: 1280px (desktop regression), 900px (desktop, tighter), 769px (just above breakpoint), 760px (just below — compact band active), 600px (narrower stacked), 400px (degraded but functional). Also verify: display mode cross-fade works at narrow width, slider drag updates vis at narrow width, regrouping toggle works at narrow width.
 
 **5.2: Accessibility**
 - ARIA attributes on SVG elements (icon array regions, tree nodes)
@@ -496,4 +515,18 @@ Also updated `Our Plan + Status.md`:
 - Updated "Next steps" paragraph to reflect Layers 0–3 complete and Layer 4 next.
 - Updated Part 3 status row from "Core decisions confirmed — ready to build" to "Complete (Layer 3 built)" with summary of resolved decisions.
 - Updated "in-between layer" paragraph to reflect Part 3 is built.
+
+**2026-03-28 — Post-Layer 4 harmonisation.** Layer 4 had no formal spec divergences (all four subtasks reported "None" or wrote no code). The harmonisation documents implementation decisions and resolves building-phase items. Changes made:
+
+1. **Regrouping animation implementation note:** Added to the Animation Mechanics section after the regrouping requirements. Documents: 700ms duration with `power2.inOut` easing; single-progress-tween architecture (one GSAP tween batch-updates all icon positions per frame via refs); label crossfade timing (source fades 0–40%, target fades 60–100%, ~140ms gap during fastest movement); `useLayoutEffect` trigger preventing flash to target positions; mid-animation toggle handling via kill-and-restart.
+2. **Tree construction/combination animation deferral:** Added implementation note documenting deferral to Part 4 per scope discipline — exploration mode uses `FullyBranched`/`CombinationShown` with no consumer for these animations. Notes what's preserved for Part 4 (construction state prop, visibility functions, bracket SVG path, reusable single-progress-tween pattern).
+3. **Icon array construction-step animation deferral:** Same rationale as tree construction — exploration mode uses `FullyPartitioned`.
+4. **Format cross-fade implementation note:** Added to the Animation Mechanics section. Documents: 300ms (150ms fade-out + 150ms fade-in); fade-out → dispatch at midpoint → fade-in architecture; three content areas targeted via refs; layout shift mitigation via invisible spacer for probability mode's extra KaTeX line.
+5. **Animation discipline implementation note:** Documents verified-correct-by-architecture outcome — no code changes needed. Slider drag kills running animations via `useLayoutEffect` cleanup. Cross-animation conflicts (regrouping during format cross-fade and vice versa) operate on independent DOM targets. No mutual exclusion guards — kill-and-restart handles all cases.
+6. **Building-phase decision resolved:** "Animation coordination during live slider dragging" updated from "Deferred to Layer 4.4" to "Resolved (Layer 4.4)" with summary of the resolution.
+7. **Part 3 current status:** Updated to reflect Layers 3 and 4 both built and verified.
+
+Also updated `Our Plan + Status.md`:
+- Updated status paragraph to reflect Layers 0–4 complete, Layer 5 next.
+- Updated Part 3 status row from "Complete (Layer 3 built)" to "Complete (Layers 3–4 built)" with animation summary.
 - Updated summary line to reflect Layer 3 complete.
