@@ -178,7 +178,7 @@ function generateQuestionFrequency(v: ResolvedVocabulary): string {
 
 function generateQuestionProbability(v: ResolvedVocabulary): string {
   const nlQuestion = `What is the probability that ${v.populationSingular} ${v.relativePronoun} ${v.testPositiveNameSingular} ${v.conditionNameSingular}?`;
-  const notation = String.raw`P(D \mid T^+) = ?`;
+  const notation = String.raw`P(D \mid T^+) = \,?`;
   return `${nlQuestion}\n${notation}`;
 }
 
@@ -540,7 +540,7 @@ function generateCrossBranchProbability(a: DataPackageRegionA): CrossBranchCombi
   const postDec = formatDecimal(a.posterior);
 
   const sumLabel = String.raw`P(T^+) = P(D \cap T^+) + P(\neg D \cap T^+) = ${jointTP} + ${jointFP} = ${marginal}`;
-  const posteriorLabel = String.raw`P(D \mid T^+) = P(D \cap T^+) / P(T^+) = ${jointTP} / ${marginal} \approx ${postDec}`;
+  const posteriorLabel = String.raw`P(D \mid T^+) = \tfrac{P(D \cap T^+)}{P(T^+)} = \tfrac{${jointTP}}{${marginal}} \approx ${postDec}`;
 
   return { sumLabel, posteriorLabel };
 }

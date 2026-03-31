@@ -89,7 +89,7 @@ export function TopStrip({
           {/* Reserve height for the KaTeX notation line when in frequency mode */}
           {displayMode === DisplayMode.Frequency && (
             <div className="top-strip__question-spacer" aria-hidden="true">
-              <KaTeXInline latex={String.raw`P(D \mid T^+) = ?`} />
+              <KaTeXInline latex={String.raw`P(D \mid T^+) = \,?`} />
             </div>
           )}
         </div>

@@ -124,7 +124,7 @@ describe('computeRegionB — Mammography Reference Scenario', () => {
       );
       expect(lines[1]).toContain('P(D');
       expect(lines[1]).toContain('T^+');
-      expect(lines[1]).toContain('= ?');
+      expect(lines[1]).toContain('= \\,?');
     });
   });
 
@@ -304,10 +304,10 @@ describe('computeRegionB — Mammography Reference Scenario', () => {
       expect(cbc.sumLabel).toContain('0.009 + 0.089 = 0.098');
     });
 
-    it('probability posterior shows Bayes theorem division', () => {
+    it('probability posterior shows Bayes theorem division with stacked fractions', () => {
       const cbc = regionB.probability.crossBranchCombination;
-      expect(cbc.posteriorLabel).toContain('P(D \\mid T^+) = P(D \\cap T^+) / P(T^+)');
-      expect(cbc.posteriorLabel).toContain('0.009 / 0.098');
+      expect(cbc.posteriorLabel).toContain('\\tfrac{P(D \\cap T^+)}{P(T^+)}');
+      expect(cbc.posteriorLabel).toContain('\\tfrac{0.009}{0.098}');
     });
   });
 });

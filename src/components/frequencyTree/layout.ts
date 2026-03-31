@@ -128,8 +128,9 @@ const BRACKET_ARM_FRACTION = 0.04;
 /** Gap between bracket bottom and first label. */
 const BRACKET_LABEL_GAP_FRACTION = 0.025;
 
-/** Gap between sum and posterior labels. */
-const BRACKET_LABEL_SPACING_FRACTION = 0.035;
+/** Gap between sum and posterior labels.
+ * Sized to accommodate stacked fractions (\tfrac) in probability mode. */
+const BRACKET_LABEL_SPACING_FRACTION = 0.045;
 
 /** Minimum scale below which the tree is hard to read. */
 const MIN_SCALE = 0.35;

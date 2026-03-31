@@ -31,6 +31,8 @@ interface KaTeXLabelProps {
   color?: string;
   /** Additional CSS class name. */
   className?: string;
+  /** Text alignment within the foreignObject (default: 'left'). */
+  textAlign?: 'left' | 'right' | 'center';
 }
 
 export function KaTeXLabel({
@@ -42,6 +44,7 @@ export function KaTeXLabel({
   fontSize = 14,
   color = '#212121',
   className,
+  textAlign = 'left',
 }: KaTeXLabelProps) {
   const html = useMemo(() => {
     try {
@@ -59,7 +62,7 @@ export function KaTeXLabel({
     <foreignObject x={x} y={y} width={width} height={height} className={className}>
       <div
         xmlns="http://www.w3.org/1999/xhtml"
-        style={{ fontSize: `${fontSize}px`, color, lineHeight: 1.2 }}
+        style={{ fontSize: `${fontSize}px`, color, lineHeight: 1.2, textAlign }}
         dangerouslySetInnerHTML={{ __html: html }}
       />
     </foreignObject>

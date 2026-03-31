@@ -75,7 +75,11 @@ function nodeTextColor(nodeId: TreeNodeId): string {
 // ===== Detecting LaTeX strings =====
 
 function isLatex(label: string): boolean {
-  return label.includes('\\') || label.includes('^') || label.includes('_');
+  // Matches LaTeX commands (\neg, \cap, etc.), superscripts (T^+), subscripts,
+  // and probability notation like P(D) = 0.01 which should render in KaTeX
+  // even without explicit LaTeX commands for font consistency.
+  return label.includes('\\') || label.includes('^') || label.includes('_')
+    || /^P\(/.test(label);
 }
 
 /** Renders KaTeX HTML inline (for use inside a foreignObject that's already open). */
@@ -370,6 +374,7 @@ function TreeBranch({ branch, label, fontSize, scale, isLatexMode }: TreeBranchP
           height={fontSize * 2}
           fontSize={fontSize * 0.9}
           color={COLORS.text.secondary}
+          textAlign={branch.labelSide === 'left' ? 'right' : 'left'}
         />
       ) : (
         <text
@@ -457,6 +462,7 @@ function CombinationBracket({ layout, combinationLabels, isLatexMode }: Combinat
           height={bracketFontSize * 2.5}
           fontSize={bracketFontSize * 0.85}
           color={COLORS.text.primary}
+          textAlign="center"
         />
       ) : (
         <text
@@ -473,16 +479,17 @@ function CombinationBracket({ layout, combinationLabels, isLatexMode }: Combinat
         </text>
       )}
 
-      {/* Posterior label */}
+      {/* Posterior label — extra height for stacked fractions (\tfrac) */}
       {useKatexPosterior ? (
         <KaTeXLabel
           latex={combinationLabels.posteriorLabel}
           x={bracket.labelX - katexWidth / 2}
-          y={bracket.posteriorLabelY - bracketFontSize * 0.3}
+          y={bracket.posteriorLabelY - bracketFontSize * 0.5}
           width={katexWidth}
-          height={bracketFontSize * 2.5}
+          height={bracketFontSize * 3.5}
           fontSize={bracketFontSize * 0.85}
           color={COLORS.text.primary}
+          textAlign="center"
         />
       ) : (
         <text
