@@ -517,9 +517,17 @@
   font-size: 15px;
 }
 
-.formula-tooltip-joint,
-.formula-tooltip-marginal {
+.bayes-formula-panel .katex-html * {
+  pointer-events: none;
+}
+
+.bayes-formula-panel .formula-tooltip-joint,
+.bayes-formula-panel .formula-tooltip-marginal {
+  pointer-events: auto;
   cursor: help;
+  background: rgba(26, 82, 118, 0.06);
+  border-radius: 2px;
+  padding: 0 1px;
 }
 
 /* Visualisation container */
