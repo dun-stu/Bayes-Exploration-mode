@@ -49,12 +49,17 @@ export const COLORS = {
 } as const;
 
 // ===== Tree Node Colour Mapping =====
-// Same scheme as icon array — same colour = same group across both formats.
+// Leaf nodes use the four partition colours (same as icon array).
+// First-level (parent) nodes use blended midpoint shades between their two
+// children's colours, so the user can visually distinguish P(D) (parent —
+// all people with the condition) from P(D ∩ T⁺) (TP leaf — only those who
+// also test positive). Preserves warm/cool family identity while making the
+// parent–leaf distinction clear.
 
 export const TREE_NODE_COLORS = {
   root: COLORS.neutral,
-  conditionPositive: COLORS.conditionPositive.primary,
-  conditionNegative: COLORS.conditionNegative.primary,
+  conditionPositive: '#ED8A30',   // Mid-warm: between #E66100 (TP) and #F5B041 (FN)
+  conditionNegative: '#3B80AC',   // Mid-cool: between #1A5276 (TN) and #5DADE2 (FP)
   truePositive: COLORS.conditionPositive.primary,
   falseNegative: COLORS.conditionPositive.secondary,
   falsePositive: COLORS.conditionNegative.secondary,

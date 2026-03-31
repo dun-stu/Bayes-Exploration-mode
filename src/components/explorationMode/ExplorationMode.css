@@ -517,6 +517,11 @@
   font-size: 15px;
 }
 
+.formula-tooltip-joint,
+.formula-tooltip-marginal {
+  cursor: help;
+}
+
 /* Visualisation container */
 
 .main-area__vis-container {
@@ -713,4 +718,5 @@
   .bayes-formula-panel__katex {
     font-size: 13px;
   }
+
 }

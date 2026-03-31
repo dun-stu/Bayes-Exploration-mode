@@ -156,7 +156,7 @@ export function MainArea({
 
       {/* Bayes' rule formula panel — below the vis, probability mode only */}
       {showFormula && (
-        <BayesFormulaPanel regionA={regionA} />
+        <BayesFormulaPanel regionA={regionA} regionB={regionB} scenarioVocabulary={scenarioVocabulary} />
       )}
     </div>
   );

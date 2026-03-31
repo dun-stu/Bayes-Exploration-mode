@@ -1,52 +1,41 @@
 /**
  * Tests for BayesFormulaPanel — Bayes' rule formula generation.
  *
- * Tests the formatForFormula helper and the formula LaTeX generation logic
+ * Tests the formatForFormula helper and the single-line three-zone formula
  * against known scenario values.
+ *
+ * Formula zones:
+ *   1. General symbolic form (normal): P(D|T⁺) = P(T⁺|D)·P(D)/P(T⁺) =
+ *   2. Numerical substitution (grey/small): sens × base / marginal =
+ *   3. Joint/marginal + result (normal): P(D∩T⁺)/P(T⁺) = joint/marginal ≈ post
  */
 
 import { describe, it, expect } from 'vitest';
 import { computeRegionA } from '../../computation/computeRegionA';
-
-// We test the formula output indirectly by verifying the format function
-// and the LaTeX string assembly against known Region A values.
+import { formatForFormula } from './BayesFormulaPanel';
 
 /**
- * Reproduce formatForFormula locally for unit testing.
- * (The function is not exported from the component, so we replicate it here.)
+ * Build expected main formula LaTeX (single line, three zones).
  */
-function formatForFormula(value: number): string {
-  const rounded2 = Math.round(value * 100) / 100;
-  if (Math.abs(value - rounded2) < 1e-9) {
-    return rounded2.toFixed(2);
-  }
-  return (Math.round(value * 1000) / 1000).toFixed(3);
-}
-
-/**
- * Build the expected formula LaTeX string from Region A values,
- * replicating the component's logic for test verification.
- */
-function buildExpectedFormulaLatex(regionA: {
+function buildExpectedMainLatex(regionA: {
   inputBaseRate: number;
   inputSensitivity: number;
   totalTestPositiveRate: number;
   posterior: number | null;
+  jointProbDAndTestPos: number;
 }): string {
-  const { inputBaseRate, inputSensitivity, totalTestPositiveRate, posterior } = regionA;
-
-  if (posterior === null || totalTestPositiveRate === 0) {
-    return String.raw`P(D \mid T^+) = \frac{P(T^+ \mid D) \cdot P(D)}{P(T^+)} = \frac{${formatForFormula(inputSensitivity)} \times ${formatForFormula(inputBaseRate)}}{0} \;\text{— undefined}`;
-  }
-
+  const { inputBaseRate, inputSensitivity, totalTestPositiveRate, posterior, jointProbDAndTestPos } = regionA;
+  const jointTP = formatForFormula(jointProbDAndTestPos);
   const sens = formatForFormula(inputSensitivity);
   const base = formatForFormula(inputBaseRate);
+
+  if (posterior === null || totalTestPositiveRate === 0) {
+    return String.raw`P(D \mid T^+) = \frac{P(T^+ \mid D) \cdot P(D)}{P(T^+)} = {\small\color{#919191}{\frac{${sens} \times ${base}}{0} =}} \;\frac{P(D \cap T^+)}{P(T^+)} = \frac{${jointTP}}{0} \;\text{— undefined}`;
+  }
+
   const marginal = formatForFormula(totalTestPositiveRate);
   const post = formatForFormula(posterior);
-  const numerator = inputSensitivity * inputBaseRate;
-  const num = formatForFormula(numerator);
-
-  return String.raw`P(D \mid T^+) = \frac{P(T^+ \mid D) \cdot P(D)}{P(T^+)} = \frac{${sens} \times ${base}}{${marginal}} = \frac{${num}}{${marginal}} \approx ${post}`;
+  return String.raw`P(D \mid T^+) = \frac{P(T^+ \mid D) \cdot P(D)}{P(T^+)} = {\small\color{#919191}{\frac{${sens} \times ${base}}{${marginal}} =}} \;\frac{P(D \cap T^+)}{P(T^+)} = \frac{\htmlClass{formula-tooltip-joint}{${jointTP}}}{\htmlClass{formula-tooltip-marginal}{${marginal}}} \approx ${post}`;
 }
 
 describe('formatForFormula', () => {
@@ -67,14 +56,12 @@ describe('formatForFormula', () => {
   });
 
   it('rounds posterior values to 3 decimal places', () => {
-    // 9/98 ≈ 0.09183673...
     expect(formatForFormula(9 / 98)).toBe('0.092');
-    // 75/100 = 0.75 — exact 2dp
     expect(formatForFormula(75 / 100)).toBe('0.75');
   });
 });
 
-describe('Bayes formula LaTeX — mammography reference', () => {
+describe('Bayes formula — mammography reference', () => {
   const regionA = computeRegionA({
     n: 1000,
     baseRate: 0.01,
@@ -82,29 +69,35 @@ describe('Bayes formula LaTeX — mammography reference', () => {
     fpr: 0.09,
   });
 
-  it('produces correct formula string', () => {
-    const latex = buildExpectedFormulaLatex(regionA);
-    // General form present
-    expect(latex).toContain(String.raw`P(D \mid T^+)`);
-    expect(latex).toContain(String.raw`P(T^+ \mid D) \cdot P(D)`);
-    expect(latex).toContain(String.raw`P(T^+)`);
-    // Substituted values
-    expect(latex).toContain('0.90');
-    expect(latex).toContain('0.01');
-    expect(latex).toContain('0.098');
-    // Numerator product
-    expect(latex).toContain('0.009');
-    // Posterior
-    expect(latex).toContain('0.092');
+  it('formula contains full general symbolic form (zone 1)', () => {
+    const main = buildExpectedMainLatex(regionA);
+    expect(main).toContain(String.raw`P(D \mid T^+) = \frac{P(T^+ \mid D) \cdot P(D)}{P(T^+)}`);
   });
 
-  it('uses \\approx for the posterior', () => {
-    const latex = buildExpectedFormulaLatex(regionA);
-    expect(latex).toContain(String.raw`\approx 0.092`);
+  it('formula contains grey numerical substitution (zone 2)', () => {
+    const main = buildExpectedMainLatex(regionA);
+    // Grey section: \small\color{#919191}{\frac{sens × base}{marginal} =}
+    expect(main).toContain('\\small\\color{#919191}');
+    expect(main).toContain('0.90');
+    expect(main).toContain('0.01');
+    expect(main).toContain('0.098');
+  });
+
+  it('formula names joint probability and shows result (zone 3)', () => {
+    const main = buildExpectedMainLatex(regionA);
+    expect(main).toContain(String.raw`\frac{P(D \cap T^+)}{P(T^+)}`);
+    expect(main).toContain(String.raw`\frac{\htmlClass{formula-tooltip-joint}{0.009}}{\htmlClass{formula-tooltip-marginal}{0.098}}`);
+    expect(main).toContain(String.raw`\approx 0.092`);
+  });
+
+  it('formula does not contain a bridging annotation line', () => {
+    const main = buildExpectedMainLatex(regionA);
+    expect(main).not.toContain('\\text{where');
+    expect(main).not.toContain('\\text{, \\; and');
   });
 });
 
-describe('Bayes formula LaTeX — spam filter scenario', () => {
+describe('Bayes formula — spam filter scenario', () => {
   const regionA = computeRegionA({
     n: 200,
     baseRate: 0.25,
@@ -112,17 +105,21 @@ describe('Bayes formula LaTeX — spam filter scenario', () => {
     fpr: 0.10,
   });
 
-  it('produces correct substituted values', () => {
-    const latex = buildExpectedFormulaLatex(regionA);
-    expect(latex).toContain('0.90');
-    expect(latex).toContain('0.25');
-    expect(latex).toContain('0.30');  // totalTestPositiveRate = (45+15)/200
-    expect(latex).toContain('0.225'); // numerator: 0.90 * 0.25
-    expect(latex).toContain('0.75');  // posterior: 45/60
+  it('formula has correct substituted values in grey zone', () => {
+    const main = buildExpectedMainLatex(regionA);
+    expect(main).toContain('0.90');  // sensitivity
+    expect(main).toContain('0.25');  // base rate
+    expect(main).toContain('0.30');  // marginal: 60/200
+  });
+
+  it('formula has correct joint and posterior in zone 3', () => {
+    const main = buildExpectedMainLatex(regionA);
+    expect(main).toContain('0.225'); // joint: 45/200
+    expect(main).toContain('0.75');  // posterior: 45/60
   });
 });
 
-describe('Bayes formula LaTeX — degenerate case (P(T+) = 0)', () => {
+describe('Bayes formula — degenerate case (P(T+) = 0)', () => {
   const regionA = computeRegionA({
     n: 1000,
     baseRate: 0.01,
@@ -130,18 +127,21 @@ describe('Bayes formula LaTeX — degenerate case (P(T+) = 0)', () => {
     fpr: 0,
   });
 
-  it('shows undefined when posterior is null', () => {
+  it('formula shows undefined with denominator 0', () => {
     expect(regionA.posterior).toBeNull();
-    expect(regionA.totalTestPositiveRate).toBe(0);
+    const main = buildExpectedMainLatex(regionA);
+    expect(main).toContain('undefined');
+    expect(main).toContain('{0}');
+    expect(main).not.toContain(String.raw`\approx`);
+  });
 
-    const latex = buildExpectedFormulaLatex(regionA);
-    expect(latex).toContain('undefined');
-    expect(latex).toContain('{0}'); // denominator is 0
-    expect(latex).not.toContain(String.raw`\approx`); // no approximate result
+  it('degenerate formula still shows general symbolic form', () => {
+    const main = buildExpectedMainLatex(regionA);
+    expect(main).toContain(String.raw`P(T^+ \mid D) \cdot P(D)`);
   });
 });
 
-describe('Bayes formula LaTeX — edge case values', () => {
+describe('Bayes formula — edge cases', () => {
   it('handles perfect sensitivity and zero FPR', () => {
     const regionA = computeRegionA({
       n: 100,
@@ -149,10 +149,10 @@ describe('Bayes formula LaTeX — edge case values', () => {
       sensitivity: 1.0,
       fpr: 0,
     });
-    const latex = buildExpectedFormulaLatex(regionA);
-    expect(latex).toContain('1.00'); // sensitivity
-    expect(latex).toContain('0.10'); // base rate and marginal (same when FPR=0)
-    expect(latex).toContain(String.raw`\approx 1.00`); // posterior = 10/10 = 1.0
+    const main = buildExpectedMainLatex(regionA);
+    expect(main).toContain(String.raw`\approx 1.00`); // posterior = 10/10 = 1.0
+    expect(main).toContain('1.00'); // sensitivity
+    expect(main).toContain('0.10'); // base rate
   });
 
   it('handles high base rate', () => {
@@ -162,11 +162,10 @@ describe('Bayes formula LaTeX — edge case values', () => {
       sensitivity: 0.80,
       fpr: 0.05,
     });
-    const latex = buildExpectedFormulaLatex(regionA);
-    expect(latex).toContain('0.80');
-    expect(latex).toContain('0.50');
-    // Posterior should be high
+    const main = buildExpectedMainLatex(regionA);
     expect(regionA.posterior).not.toBeNull();
     expect(regionA.posterior!).toBeGreaterThan(0.9);
+    expect(main).toContain(String.raw`P(D \cap T^+)`);
+    expect(main).toContain(String.raw`P(T^+ \mid D) \cdot P(D)`);
   });
 });
