@@ -26,6 +26,15 @@ import { MainArea, type VisFormat } from './MainArea';
 import { useFormatCrossFade } from './useFormatCrossFade';
 import './ExplorationMode.css';
 
+/**
+ * Bayes' rule formula state.
+ * - `formulaRevealed`: whether the user has clicked to reveal the formula.
+ *   Persists across parameter changes, scenario switches, and format-view toggles.
+ *   The formula is only visible when BOTH formulaRevealed AND displayMode === Probability.
+ *   When switching to frequency mode, the formula disappears but the revealed state
+ *   is preserved — switching back to probability mode re-shows it automatically.
+ */
+
 /** Duration (ms) for transient N-change notification. */
 const N_CHANGE_NOTIFICATION_DURATION = 4000;
 
@@ -35,6 +44,7 @@ export function ExplorationMode() {
   const [groupingState, setGroupingState] = useState<GroupingState>(
     GroupingState.GroupedByCondition,
   );
+  const [formulaRevealed, setFormulaRevealed] = useState(false);
 
   // --- N-change notification (5.3) ---
   // Detect when switching N presets forces the base rate to snap to a different value.
@@ -162,6 +172,8 @@ export function ExplorationMode() {
           onGroupingChange={setGroupingState}
           contentRef={visContentRef}
           scenarioVocabulary={parameters.scenarioVocabulary}
+          formulaRevealed={formulaRevealed}
+          onFormulaToggle={setFormulaRevealed}
         />
       </div>
     </div>

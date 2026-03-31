@@ -464,6 +464,59 @@
   color: #212121;
 }
 
+/* Bayes' rule formula toggle — text-style link button in toolbar.
+   Visually lightweight: appears as a text link, not a primary control.
+   Only rendered in probability mode. */
+
+.formula-toggle {
+  font-size: 12px;
+  font-weight: 500;
+  color: #1A5276;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-left: auto;
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.formula-toggle:hover {
+  background: rgba(26, 82, 118, 0.08);
+  color: #145a80;
+}
+
+/* Bayes' rule formula panel — subordinate reference element below the vis.
+   Compact, light styling to avoid competing with the visualisation. */
+
+.bayes-formula-panel {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  background: #f5f7fa;
+  border-top: 1px solid #e0e0e0;
+  text-align: center;
+}
+
+.bayes-formula-panel__label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9e9e9e;
+  margin-bottom: 4px;
+}
+
+.bayes-formula-panel__formula {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
+}
+
+.bayes-formula-panel__katex {
+  font-size: 15px;
+}
+
 /* Visualisation container */
 
 .main-area__vis-container {
@@ -471,6 +524,7 @@
   min-height: 200px;
   overflow: hidden;
 }
+
 
 /* ===== Responsive — narrow viewport (≤ 768px) ===== */
 /* Sidebar stacks above the visualisation as a compact horizontal band.
@@ -642,5 +696,21 @@
 
   .main-area__vis-container {
     min-height: 150px;
+  }
+
+  /* Formula toggle: smaller at narrow widths */
+  .formula-toggle {
+    font-size: 11px;
+    padding: 3px 6px;
+    margin-left: 8px;
+  }
+
+  /* Formula panel: tighter at narrow widths */
+  .bayes-formula-panel {
+    padding: 6px 12px;
+  }
+
+  .bayes-formula-panel__katex {
+    font-size: 13px;
   }
 }

@@ -14,6 +14,7 @@ import type { DataPackageRegionA, DataPackageRegionB, ScenarioDefinition } from 
 import { GroupingState, DisplayMode, TreeCombinationState } from '../../types';
 import { IconArray } from '../iconArray/IconArray';
 import { FrequencyTree } from '../frequencyTree/FrequencyTree';
+import { BayesFormulaPanel } from './BayesFormulaPanel';
 
 type VisFormat = 'iconArray' | 'frequencyTree';
 
@@ -29,6 +30,10 @@ interface MainAreaProps {
   contentRef?: React.RefObject<HTMLDivElement | null>;
   /** Scenario vocabulary for icon array tooltip generation. */
   scenarioVocabulary?: ScenarioDefinition | null;
+  /** Whether the user has revealed the Bayes' rule formula (probability mode only). */
+  formulaRevealed?: boolean;
+  /** Toggle callback for formula visibility. */
+  onFormulaToggle?: (revealed: boolean) => void;
 }
 
 export function MainArea({
@@ -41,6 +46,8 @@ export function MainArea({
   onGroupingChange,
   contentRef,
   scenarioVocabulary,
+  formulaRevealed = false,
+  onFormulaToggle,
 }: MainAreaProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -61,6 +68,8 @@ export function MainArea({
   }, []);
 
   const isByCondition = groupingState === GroupingState.GroupedByCondition;
+  const isProbabilityMode = displayMode === DisplayMode.Probability;
+  const showFormula = isProbabilityMode && formulaRevealed;
 
   return (
     <div className="main-area">
@@ -99,6 +108,16 @@ export function MainArea({
             </button>
           </div>
         )}
+
+        {/* Bayes' rule formula toggle — probability mode only */}
+        {isProbabilityMode && onFormulaToggle && (
+          <button
+            className="formula-toggle"
+            onClick={() => onFormulaToggle(!formulaRevealed)}
+          >
+            {formulaRevealed ? 'Hide Bayes\u2019 rule' : 'Show Bayes\u2019 rule'}
+          </button>
+        )}
       </div>
 
       {/* Visualisation container — measured via ResizeObserver.
@@ -134,6 +153,11 @@ export function MainArea({
           )
         )}
       </div>
+
+      {/* Bayes' rule formula panel — below the vis, probability mode only */}
+      {showFormula && (
+        <BayesFormulaPanel regionA={regionA} />
+      )}
     </div>
   );
 }
