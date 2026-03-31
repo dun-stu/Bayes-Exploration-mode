@@ -118,8 +118,9 @@ const REF_BRACKET_FONT = 12.5;
 /** Reference corner radius at scale=1. */
 const REF_NODE_RADIUS = 6;
 
-/** Vertical gap between leaf node bottom and bracket top. */
-const BRACKET_GAP_FRACTION = 0.035;
+/** Vertical gap between leaf node bottom and bracket top.
+ * Sized to accommodate test-outcome labels below leaf nodes. */
+const BRACKET_GAP_FRACTION = 0.065;
 
 /** Bracket arm height as fraction of container height. */
 const BRACKET_ARM_FRACTION = 0.04;
@@ -195,13 +196,25 @@ export function computeTreeLayout(containerWidth: number, containerHeight: numbe
     const x2 = cNode.cx;
     const y2 = cNode.cy - cNode.height / 2;
 
-    // Label at midpoint, offset horizontally to the designated side.
+    // Label at midpoint, offset perpendicular to the branch line.
+    // Using perpendicular offset ensures left and right labels appear at
+    // equal visual distance from their branch regardless of branch angle.
     const midX = (x1 + x2) / 2;
     const midY = (y1 + y2) / 2;
-    const labelOffset = 8 * scale;
-    const labelX = side === 'left' ? midX - labelOffset : midX + labelOffset;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const perpDist = 8 * scale; // perpendicular distance from branch line
+    // Perpendicular unit vector (pointing left of the branch direction).
+    const perpX = -dy / len;
+    const perpY = dx / len;
+    // Left-side labels go in the direction where perpX < 0 (left of downward branch),
+    // right-side labels go the opposite direction.
+    const sign = side === 'left' ? 1 : -1;
+    const labelX = midX + sign * perpX * perpDist;
+    const labelY = midY + sign * perpY * perpDist;
 
-    return { id, x1, y1, x2, y2, labelX, labelY: midY, labelSide: side };
+    return { id, x1, y1, x2, y2, labelX, labelY, labelSide: side };
   });
 
   // Build bracket layout (beneath TP and FP leaf nodes).

@@ -227,7 +227,7 @@ export function Sidebar({
           <DerivedResult
             displayString={params.totalTestPositiveRate}
             isProbability={isProbability}
-            variant="default"
+            variant="marginal"
           />
 
           <DerivedResult
@@ -317,10 +317,10 @@ function DerivedResult({
 }: {
   displayString: string;
   isProbability: boolean;
-  variant: 'default' | 'posterior';
+  variant: 'marginal' | 'posterior';
 }) {
   const parsed = parseDerivedResult(displayString, isProbability);
-  const className = `derived-result${variant === 'posterior' ? ' derived-result--posterior' : ''}`;
+  const className = `derived-result derived-result--${variant}`;
 
   if (isProbability) {
     return (

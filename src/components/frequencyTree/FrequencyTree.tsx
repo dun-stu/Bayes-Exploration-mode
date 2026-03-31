@@ -17,6 +17,7 @@ import type {
   DataPackageRegionA,
   DataPackageRegionB,
   ByConditionLabels,
+  ByTestResultLabels,
   TreeNodeLabels,
   TreeBranchLabels,
   CrossBranchCombinationLabels,
@@ -99,19 +100,37 @@ function KaTeXInline({ latex, fontSize, color }: { latex: string; fontSize: numb
 
 /**
  * Extract domain labels for root and first-level tree nodes from ByConditionLabels.
+ * These appear ABOVE their respective nodes.
  *
  * Root gets the population name; first-level nodes get condition group names.
- * Leaf nodes are excluded: their domain labels are identical to the parent's
- * (e.g. both conditionPositive and truePositive say "Have the disease"),
- * adding no new information. The leaf's distinguishing characteristic comes
- * from its tree position and the branch label (structural term like
- * "Sensitivity: 90%"), not from a distinct domain name.
  */
 function getNodeDomainLabels(byCondition: ByConditionLabels): Partial<Record<TreeNodeId, string>> {
   return {
     root: byCondition.population.domainLabel,
     conditionPositive: byCondition.conditionPositive.group.domainLabel,
     conditionNegative: byCondition.conditionNegative.group.domainLabel,
+  };
+}
+
+/**
+ * Extract test-outcome labels for leaf nodes from ByTestResultLabels.
+ * These appear BELOW their respective leaf nodes.
+ *
+ * The first-level domain label already tells the user the condition group
+ * ("Have the disease" / "Do not have the disease"), so the leaf label
+ * just needs the test outcome to complete the 2×2 classification.
+ *
+ * TP and FP → test-positive domain label (e.g., "Are flagged", "Test positive")
+ * FN and TN → test-negative domain label (e.g., "Reach the inbox", "Test negative")
+ */
+function getLeafTestOutcomeLabels(byTestResult: ByTestResultLabels): Partial<Record<TreeNodeId, string>> {
+  const testPosLabel = byTestResult.testPositive.group.domainLabel;
+  const testNegLabel = byTestResult.testNegative.group.domainLabel;
+  return {
+    truePositive: testPosLabel,
+    falseNegative: testNegLabel,
+    falsePositive: testPosLabel,
+    trueNegative: testNegLabel,
   };
 }
 
@@ -140,10 +159,16 @@ export function FrequencyTree({
   const branchLabels: TreeBranchLabels = modeLabels.treeBranches;
   const combinationLabels: CrossBranchCombinationLabels = modeLabels.crossBranchCombination;
 
-  // Domain labels come from the by-condition grouping (same in both display modes).
+  // Domain labels above nodes come from the by-condition grouping (same in both display modes).
   const domainLabels = useMemo(
     () => getNodeDomainLabels(modeLabels.byCondition),
     [modeLabels.byCondition],
+  );
+
+  // Leaf labels below nodes come from the by-test-result grouping (test outcome names).
+  const leafLabels = useMemo(
+    () => getLeafTestOutcomeLabels(modeLabels.byTestResult),
+    [modeLabels.byTestResult],
   );
 
   const showCombination =
@@ -176,10 +201,11 @@ export function FrequencyTree({
         );
       })}
 
-      {/* Nodes with domain labels (root + first-level only) */}
+      {/* Nodes with domain labels above (root + first-level) and leaf labels below */}
       {Array.from(layout.nodes.entries()).map(([nodeId, node]) => {
         if (!isNodeVisible(nodeId, constructionState)) return null;
         const domainLabel = domainLabels[nodeId];
+        const leafLabel = leafLabels[nodeId];
         return (
           <g key={nodeId}>
             {/* Domain label above node (root + first-level nodes only) */}
@@ -207,6 +233,22 @@ export function FrequencyTree({
               radius={layout.nodeRadius}
               isLatexMode={displayMode === DisplayMode.Probability}
             />
+
+            {/* Test-outcome label below leaf nodes */}
+            {leafLabel && (
+              <text
+                x={node.cx}
+                y={node.cy + node.height / 2 + domainFontSize * 1.1}
+                textAnchor="middle"
+                dominantBaseline="auto"
+                fontSize={domainFontSize}
+                fontWeight={500}
+                fontFamily="system-ui, sans-serif"
+                fill={COLORS.text.secondary}
+              >
+                {leafLabel}
+              </text>
+            )}
           </g>
         );
       })}

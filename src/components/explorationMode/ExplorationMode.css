@@ -297,17 +297,35 @@
 }
 
 .derived-result {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px 10px;
+  padding: 8px 10px 8px 13px;
   background: #f8f9fa;
   border-radius: 6px;
-  border-left: 3px solid #1A5276;
+  overflow: hidden;
 }
 
-.derived-result--posterior {
-  border-left-color: #E66100;
+/* Left accent stripe via pseudo-element — preserves border-radius. */
+.derived-result::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 6px 0 0 6px;
+}
+
+/* P(T⁺) is a marginal — sums across TP (warm #E66100) and FP (cool #5DADE2).
+   Gradient accent reflects this cross-group nature. */
+.derived-result--marginal::before {
+  background: linear-gradient(to bottom, #E66100, #5DADE2);
+}
+
+.derived-result--posterior::before {
+  background: #E66100;
 }
 
 .derived-result__label {
@@ -666,7 +684,7 @@
 
   .derived-result {
     flex: 1;
-    padding: 6px 8px;
+    padding: 6px 8px 6px 11px;
   }
 
   .derived-result__label {
