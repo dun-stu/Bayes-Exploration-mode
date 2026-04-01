@@ -138,6 +138,96 @@ function getLeafTestOutcomeLabels(byTestResult: ByTestResultLabels): Partial<Rec
   };
 }
 
+// ===== Accessible Description =====
+
+/**
+ * Build a comprehensive aria-label for the tree SVG from the data package.
+ * Describes the full tree structure using domain vocabulary so a screen reader
+ * can convey the same information the visual tree communicates.
+ */
+function buildTreeAriaLabel(
+  regionA: DataPackageRegionA,
+  regionB: DataPackageRegionB,
+  displayMode: DisplayMode,
+  constructionState: TreeConstructionState,
+  showCombination: boolean,
+): string {
+  const labels = displayMode === DisplayMode.Frequency
+    ? regionB.frequency : regionB.probability;
+  const bc = labels.byCondition;
+  const parts: string[] = [];
+
+  parts.push(`Frequency tree: ${regionA.n} ${bc.population.domainLabel}.`);
+
+  if (constructionState === TreeConstructionState.RootOnly) {
+    return parts.join(' ');
+  }
+
+  // First level
+  parts.push(
+    `${bc.conditionPositive.group.domainLabel}: ${regionA.nD}.`,
+    `${bc.conditionNegative.group.domainLabel}: ${regionA.nNotD}.`,
+  );
+
+  if (constructionState === TreeConstructionState.FirstBranch) {
+    return parts.join(' ');
+  }
+
+  // Second level — condition positive
+  parts.push(
+    `Of those, ${regionA.nTP} true positives, ${regionA.nFN} false negatives.`,
+  );
+
+  if (constructionState === TreeConstructionState.ConditionPositiveSecondBranch) {
+    return parts.join(' ');
+  }
+
+  // Second level — condition negative
+  parts.push(
+    `Of the ${regionA.nNotD} without the condition, ${regionA.nFP} false positives, ${regionA.nTN} true negatives.`,
+  );
+
+  // Combination
+  if (showCombination) {
+    parts.push(
+      `Total testing positive: ${regionA.nTestPos} (${regionA.nTP} true positives + ${regionA.nFP} false positives).`,
+    );
+    if (regionA.posterior !== null) {
+      parts.push(`Posterior probability: ${(regionA.posterior * 100).toFixed(1)}%.`);
+    } else {
+      parts.push('Posterior is undefined (no positive tests).');
+    }
+  }
+
+  return parts.join(' ');
+}
+
+/**
+ * Build an aria-label for an individual tree node.
+ */
+function buildNodeAriaLabel(
+  nodeId: TreeNodeId,
+  regionA: DataPackageRegionA,
+  byCondition: ByConditionLabels,
+): string {
+  switch (nodeId) {
+    case 'root':
+      return `Population: ${regionA.n} ${byCondition.population.domainLabel}`;
+    case 'conditionPositive':
+      return `${byCondition.conditionPositive.group.domainLabel}: ${regionA.nD}`;
+    case 'conditionNegative':
+      return `${byCondition.conditionNegative.group.domainLabel}: ${regionA.nNotD}`;
+    case 'truePositive':
+      return `True positives: ${regionA.nTP}`;
+    case 'falseNegative':
+      return `False negatives: ${regionA.nFN}`;
+    case 'falsePositive':
+      return `False positives: ${regionA.nFP}`;
+    case 'trueNegative':
+      return `True negatives: ${regionA.nTN}`;
+  }
+}
+
 // ===== Component =====
 
 export function FrequencyTree({
@@ -182,13 +272,19 @@ export function FrequencyTree({
   // Font size for domain labels above nodes — slightly smaller than node labels.
   const domainFontSize = layout.branchFontSize * 0.9;
 
+  // Accessible description derived from data package
+  const treeAriaLabel = useMemo(
+    () => buildTreeAriaLabel(regionA, regionB, displayMode, constructionState, showCombination),
+    [regionA, regionB, displayMode, constructionState, showCombination],
+  );
+
   return (
     <svg
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
-      aria-label={`Frequency tree showing population of ${regionA.n}`}
+      aria-label={treeAriaLabel}
     >
       {/* Branches (rendered behind nodes) */}
       {layout.branches.map((branch) => {
@@ -210,8 +306,9 @@ export function FrequencyTree({
         if (!isNodeVisible(nodeId, constructionState)) return null;
         const domainLabel = domainLabels[nodeId];
         const leafLabel = leafLabels[nodeId];
+        const nodeAriaLabel = buildNodeAriaLabel(nodeId, regionA, modeLabels.byCondition);
         return (
-          <g key={nodeId}>
+          <g key={nodeId} role="group" aria-label={nodeAriaLabel}>
             {/* Domain label above node (root + first-level nodes only) */}
             {domainLabel && (
               <text
@@ -423,7 +520,7 @@ function CombinationBracket({ layout, combinationLabels, isLatexMode }: Combinat
   const katexWidth = Math.max(300, (bracket.rightX - bracket.leftX) * 1.2);
 
   return (
-    <g className="combination-bracket">
+    <g className="combination-bracket" role="group" aria-label="Cross-branch combination: total testing positive and posterior probability">
       {/* Bracket shape */}
       <path
         d={bracketPath}

@@ -339,6 +339,48 @@ function computeR2YOffset(
 const BY_CONDITION_R1_GROUPS: ReadonlySet<IconGroup> = new Set(['truePositive', 'falseNegative']);
 const BY_TEST_RESULT_R1_GROUPS: ReadonlySet<IconGroup> = new Set(['truePositive', 'falsePositive']);
 
+// ===== Accessible Description =====
+
+/**
+ * Build a comprehensive aria-label for the icon array SVG from the data package.
+ * Summarises the partition counts and current grouping state using domain vocabulary.
+ */
+function buildIconArrayAriaLabel(
+  regionA: DataPackageRegionA,
+  regionB: DataPackageRegionB,
+  groupingState: GroupingState,
+  constructionState: IconArrayConstructionState,
+): string {
+  const bc = regionB.frequency.byCondition;
+  const groupedBy = groupingState === GroupingState.GroupedByCondition
+    ? 'Grouped by condition' : 'Grouped by test result';
+
+  if (constructionState === IconArrayConstructionState.Unpartitioned) {
+    return `Icon array: ${regionA.n} ${bc.population.domainLabel}, unpartitioned. ${groupedBy}.`;
+  }
+
+  const parts: string[] = [
+    `Icon array: ${regionA.n} ${bc.population.domainLabel}.`,
+  ];
+
+  if (constructionState === IconArrayConstructionState.BaseRatePartitioned) {
+    parts.push(
+      `${bc.conditionPositive.group.domainLabel}: ${regionA.nD}.`,
+      `${bc.conditionNegative.group.domainLabel}: ${regionA.nNotD}.`,
+    );
+  } else {
+    // ConditionPositiveSubpartitioned or FullyPartitioned
+    parts.push(
+      `${bc.conditionPositive.group.domainLabel}: ${regionA.nD} (${regionA.nTP} true positives, ${regionA.nFN} false negatives).`,
+      `${bc.conditionNegative.group.domainLabel}: ${regionA.nNotD} (${regionA.nFP} false positives, ${regionA.nTN} true negatives).`,
+    );
+  }
+
+  parts.push(groupedBy + '.');
+
+  return parts.join(' ');
+}
+
 // ===== Component =====
 
 export function IconArray({
@@ -521,6 +563,12 @@ export function IconArray({
     };
   }, [groupingState, animateTransitions, dualLayout]);
 
+  // ── Accessible description ──
+  const iconArrayAriaLabel = useMemo(
+    () => buildIconArrayAriaLabel(regionA, regionB, groupingState, constructionState),
+    [regionA, regionB, groupingState, constructionState],
+  );
+
   // ── Early exit ──
   if (dualLayout.icons.length === 0) return null;
 
@@ -544,7 +592,7 @@ export function IconArray({
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
-      aria-label={`Icon array showing ${regionA.n} icons`}
+      aria-label={iconArrayAriaLabel}
     >
       {/* Icons — React renders at the current groupingState's positions.
           During animation, useLayoutEffect overrides these positions via GSAP

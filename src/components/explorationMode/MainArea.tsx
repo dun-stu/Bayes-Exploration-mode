@@ -34,6 +34,8 @@ interface MainAreaProps {
   formulaRevealed?: boolean;
   /** Toggle callback for formula visibility. */
   onFormulaToggle?: (revealed: boolean) => void;
+  /** Whether to animate transitions (false when prefers-reduced-motion is active). */
+  animateTransitions?: boolean;
 }
 
 export function MainArea({
@@ -48,6 +50,7 @@ export function MainArea({
   scenarioVocabulary,
   formulaRevealed = false,
   onFormulaToggle,
+  animateTransitions = true,
 }: MainAreaProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -75,15 +78,17 @@ export function MainArea({
     <div className="main-area">
       {/* Toolbar with format selector + contextual controls */}
       <div className="main-area__toolbar">
-        <div className="format-selector">
+        <div className="format-selector" role="group" aria-label="Visualisation format">
           <button
             className={activeFormat === 'iconArray' ? 'active' : ''}
+            aria-pressed={activeFormat === 'iconArray'}
             onClick={() => onFormatChange('iconArray')}
           >
             Icon Array
           </button>
           <button
             className={activeFormat === 'frequencyTree' ? 'active' : ''}
+            aria-pressed={activeFormat === 'frequencyTree'}
             onClick={() => onFormatChange('frequencyTree')}
           >
             Frequency Tree
@@ -92,16 +97,18 @@ export function MainArea({
 
         {/* Regrouping toggle — contextual, only when icon array is active */}
         {activeFormat === 'iconArray' && (
-          <div className="grouping-toggle">
-            <span className="grouping-toggle__label">Group by:</span>
+          <div className="grouping-toggle" role="group" aria-label="Grouping">
+            <span className="grouping-toggle__label" aria-hidden="true">Group by:</span>
             <button
               className={isByCondition ? 'active' : ''}
+              aria-pressed={isByCondition}
               onClick={() => onGroupingChange(GroupingState.GroupedByCondition)}
             >
               Condition
             </button>
             <button
               className={!isByCondition ? 'active' : ''}
+              aria-pressed={!isByCondition}
               onClick={() => onGroupingChange(GroupingState.GroupedByTestResult)}
             >
               Test Result
@@ -138,7 +145,7 @@ export function MainArea({
               height={size.height}
               groupingState={groupingState}
               displayMode={displayMode}
-              animateTransitions
+              animateTransitions={animateTransitions}
               scenarioVocabulary={scenarioVocabulary}
             />
           ) : (

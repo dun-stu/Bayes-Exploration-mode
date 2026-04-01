@@ -18,3 +18,17 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* Screen-reader-only utility — visually hidden but present in the DOM
+   for screen readers. Used by the aria-live announcer. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

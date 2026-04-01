@@ -20,6 +20,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAppState } from '../../state';
 import { DisplayMode, GroupingState } from '../../types';
 import { snapBaseRate } from '../../state/parameterState';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
+import { useAriaLiveAnnouncer } from '../../hooks/useAriaLiveAnnouncer';
 import { TopStrip } from './TopStrip';
 import { Sidebar } from './Sidebar';
 import { MainArea, type VisFormat } from './MainArea';
@@ -45,6 +47,8 @@ export function ExplorationMode() {
     GroupingState.GroupedByCondition,
   );
   const [formulaRevealed, setFormulaRevealed] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const { announcement, announce, announceDebounced } = useAriaLiveAnnouncer();
 
   // --- N-change notification (5.3) ---
   // Detect when switching N presets forces the base rate to snap to a different value.
@@ -80,7 +84,8 @@ export function ExplorationMode() {
     }
 
     dispatch({ type: 'SET_N', value: newN });
-  }, [parameters.baseRate, dispatch]);
+    announce(`Population size: ${newN.toLocaleString()}`);
+  }, [parameters.baseRate, dispatch, announce]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -106,13 +111,17 @@ export function ExplorationMode() {
   const handleScenarioChange = useCallback((scenario: import('../../types').ScenarioDefinition) => {
     setNChangeNotification(null);
     dispatch({ type: 'SET_SCENARIO', scenario });
-  }, [dispatch]);
+    announce(`Scenario: ${scenario.name}`);
+  }, [dispatch, announce]);
 
   // Format-switching cross-fade (4.3): intercepts display mode changes
   // and coordinates a fade-out → state change → fade-in across all three layers.
   const dispatchModeChange = useCallback(
-    (mode: DisplayMode) => dispatch({ type: 'SET_DISPLAY_MODE', mode }),
-    [dispatch],
+    (mode: DisplayMode) => {
+      dispatch({ type: 'SET_DISPLAY_MODE', mode });
+      announce(`Display mode: ${mode === DisplayMode.Frequency ? 'Frequency' : 'Probability'}`);
+    },
+    [dispatch, announce],
   );
 
   const {
@@ -123,7 +132,41 @@ export function ExplorationMode() {
   } = useFormatCrossFade({
     currentMode: parameters.displayMode,
     dispatchModeChange,
+    reducedMotion: prefersReducedMotion,
   });
+
+  // Wrapped handlers for view-layer state changes with aria-live announcements
+  const handleFormatChange = useCallback((format: import('./MainArea').VisFormat) => {
+    setActiveFormat(format);
+    announce(`Format: ${format === 'iconArray' ? 'Icon Array' : 'Frequency Tree'}`);
+  }, [announce]);
+
+  const handleGroupingChange = useCallback((state: GroupingState) => {
+    setGroupingState(state);
+    announce(`Grouped by: ${state === GroupingState.GroupedByCondition ? 'Condition' : 'Test Result'}`);
+  }, [announce]);
+
+  // Debounced slider announcements — use the display string from Region B
+  // which contains the pedagogically meaningful Y2 format output.
+  const handleBaseRateChangeWithAnnounce = useCallback((value: number) => {
+    handleBaseRateChange(value);
+    // Debounce uses a fixed message; the region B display string updates after re-render.
+    // We compute a simple percentage string for the announcement.
+    const pct = (value * 100).toFixed(1).replace(/\.0$/, '');
+    announceDebounced(`Base rate: ${pct}%`);
+  }, [handleBaseRateChange, announceDebounced]);
+
+  const handleSensitivityChangeWithAnnounce = useCallback((value: number) => {
+    handleSensitivityChange(value);
+    const pct = (value * 100).toFixed(0);
+    announceDebounced(`Sensitivity: ${pct}%`);
+  }, [handleSensitivityChange, announceDebounced]);
+
+  const handleFprChangeWithAnnounce = useCallback((value: number) => {
+    handleFprChange(value);
+    const pct = (value * 100).toFixed(0);
+    announceDebounced(`False positive rate: ${pct}%`);
+  }, [handleFprChange, announceDebounced]);
 
   // Select the active display mode's label set from Region B
   const activeLabels = parameters.displayMode === DisplayMode.Frequency
@@ -132,6 +175,11 @@ export function ExplorationMode() {
 
   return (
     <div className="exploration-mode">
+      {/* Screen-reader-only live region for announcing state changes */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </div>
+
       {/* Top strip — problem context (Group 1) */}
       <TopStrip
         scenarioId={parameters.scenarioId}
@@ -155,9 +203,9 @@ export function ExplorationMode() {
           regionA={dataPackage.regionA}
           labels={activeLabels}
           onNChange={handleNChange}
-          onBaseRateChange={handleBaseRateChange}
-          onSensitivityChange={handleSensitivityChange}
-          onFprChange={handleFprChange}
+          onBaseRateChange={handleBaseRateChangeWithAnnounce}
+          onSensitivityChange={handleSensitivityChangeWithAnnounce}
+          onFprChange={handleFprChangeWithAnnounce}
           contentRef={sidebarContentRef}
           nChangeNotification={nChangeNotification}
         />
@@ -165,16 +213,17 @@ export function ExplorationMode() {
         {/* Main area — visualisation (Group 3) */}
         <MainArea
           activeFormat={activeFormat}
-          onFormatChange={setActiveFormat}
+          onFormatChange={handleFormatChange}
           regionA={dataPackage.regionA}
           regionB={dataPackage.regionB}
           displayMode={parameters.displayMode}
           groupingState={groupingState}
-          onGroupingChange={setGroupingState}
+          onGroupingChange={handleGroupingChange}
           contentRef={visContentRef}
           scenarioVocabulary={parameters.scenarioVocabulary}
           formulaRevealed={formulaRevealed}
           onFormulaToggle={setFormulaRevealed}
+          animateTransitions={!prefersReducedMotion}
         />
       </div>
     </div>

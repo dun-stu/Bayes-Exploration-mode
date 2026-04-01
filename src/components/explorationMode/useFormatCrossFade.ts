@@ -36,6 +36,8 @@ interface UseFormatCrossFadeOptions {
   currentMode: DisplayMode;
   /** The actual dispatch function to change displayMode in the reducer. */
   dispatchModeChange: (mode: DisplayMode) => void;
+  /** When true, skip the cross-fade animation and dispatch the mode change instantly. */
+  reducedMotion?: boolean;
 }
 
 interface UseFormatCrossFadeReturn {
@@ -58,6 +60,7 @@ interface UseFormatCrossFadeReturn {
 export function useFormatCrossFade({
   currentMode,
   dispatchModeChange,
+  reducedMotion = false,
 }: UseFormatCrossFadeOptions): UseFormatCrossFadeReturn {
   const topStripContentRef = useRef<HTMLDivElement>(null);
   const sidebarContentRef = useRef<HTMLDivElement>(null);
@@ -84,6 +87,12 @@ export function useFormatCrossFade({
       ].filter(Boolean);
       gsap.set(targets, { opacity: 1 });
       isTransitioning.current = false;
+      dispatchModeChange(newMode);
+      return;
+    }
+
+    // Reduced motion: skip animation entirely, dispatch instantly
+    if (reducedMotion) {
       dispatchModeChange(newMode);
       return;
     }
@@ -130,7 +139,7 @@ export function useFormatCrossFade({
     });
 
     timelineRef.current = tl;
-  }, [currentMode, dispatchModeChange]);
+  }, [currentMode, dispatchModeChange, reducedMotion]);
 
   return {
     topStripContentRef,

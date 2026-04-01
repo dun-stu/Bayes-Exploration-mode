@@ -152,12 +152,13 @@ export function Sidebar({
 
         {/* N Selector — segmented control */}
         <div className="n-selector">
-          <div className="n-selector__label">Population size (N)</div>
-          <div className="n-selector__buttons">
+          <div className="n-selector__label" id="n-selector-label">Population size (N)</div>
+          <div className="n-selector__buttons" role="group" aria-labelledby="n-selector-label">
             {N_PRESETS.map(preset => (
               <button
                 key={preset}
                 className={n === preset ? 'active' : ''}
+                aria-pressed={n === preset}
                 onClick={() => onNChange(preset)}
               >
                 {preset.toLocaleString()}
@@ -166,7 +167,7 @@ export function Sidebar({
           </div>
           {/* Transient N-change notification */}
           {nChangeNotification && (
-            <div className="contextual-note contextual-note--transient">
+            <div className="contextual-note contextual-note--transient" role="status">
               {nChangeNotification}
             </div>
           )}
@@ -181,6 +182,7 @@ export function Sidebar({
           step={baseRateStep}
           value={baseRate}
           onChange={onBaseRateChange}
+          ariaLabel="Base rate"
           contextualNote={
             smallND
               ? 'The affected group is very small at this population size \u2014 try a larger N for more detail.'
@@ -197,6 +199,7 @@ export function Sidebar({
           step={0.01}
           value={sensitivity}
           onChange={onSensitivityChange}
+          ariaLabel="Sensitivity"
           contextualNote={
             sensitivityZeroFromRounding
               ? 'At this population size, the sensitivity doesn\u2019t produce any detected cases. Try a larger population for more detail.'
@@ -213,6 +216,7 @@ export function Sidebar({
           step={0.01}
           value={fpr}
           onChange={onFprChange}
+          ariaLabel="False positive rate"
           contextualNote={
             fprZeroFromRounding
               ? 'At this population size, the false positive rate doesn\u2019t produce any false positives. Try a larger population for more detail.'
@@ -252,6 +256,7 @@ function ParameterSlider({
   value,
   onChange,
   contextualNote,
+  ariaLabel,
 }: {
   displayString: string;
   isProbability: boolean;
@@ -261,6 +266,7 @@ function ParameterSlider({
   value: number;
   onChange: (v: number) => void;
   contextualNote?: string;
+  ariaLabel?: string;
 }) {
   if (isProbability) {
     const parsed = parseProbabilityParam(displayString);
@@ -278,10 +284,11 @@ function ParameterSlider({
           step={step}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
+          aria-label={ariaLabel}
         />
         <div className="param-slider__description">{parsed.description}</div>
         {contextualNote && (
-          <div className="contextual-note">{contextualNote}</div>
+          <div className="contextual-note" role="status">{contextualNote}</div>
         )}
       </div>
     );
@@ -301,10 +308,11 @@ function ParameterSlider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
+        aria-label={ariaLabel}
       />
       <div className="param-slider__description">{parsed.description}</div>
       {contextualNote && (
-        <div className="contextual-note">{contextualNote}</div>
+        <div className="contextual-note" role="status">{contextualNote}</div>
       )}
     </div>
   );

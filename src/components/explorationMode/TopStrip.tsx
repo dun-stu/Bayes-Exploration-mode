@@ -58,15 +58,17 @@ export function TopStrip({
         </div>
 
         {/* Display Mode Toggle — broadest-scope control */}
-        <div className="top-strip__display-mode">
+        <div className="top-strip__display-mode" role="group" aria-label="Display mode">
           <button
             className={displayMode === DisplayMode.Frequency ? 'active' : ''}
+            aria-pressed={displayMode === DisplayMode.Frequency}
             onClick={() => onDisplayModeChange(DisplayMode.Frequency)}
           >
             Frequency
           </button>
           <button
             className={displayMode === DisplayMode.Probability ? 'active' : ''}
+            aria-pressed={displayMode === DisplayMode.Probability}
             onClick={() => onDisplayModeChange(DisplayMode.Probability)}
           >
             Probability

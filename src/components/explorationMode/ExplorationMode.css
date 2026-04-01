@@ -379,6 +379,44 @@
   }
 }
 
+/* ===== Focus Indicators ===== */
+/* Ensure all interactive elements show a visible focus ring for keyboard navigation.
+   Uses :focus-visible so mouse clicks don't show the ring, but keyboard Tab does. */
+
+.top-strip__display-mode button:focus-visible,
+.n-selector__buttons button:focus-visible,
+.format-selector button:focus-visible,
+.grouping-toggle button:focus-visible,
+.formula-toggle:focus-visible {
+  outline: 2px solid #1A5276;
+  outline-offset: 1px;
+  z-index: 1;
+}
+
+.param-slider input[type="range"]:focus-visible {
+  outline: 2px solid #1A5276;
+  outline-offset: 2px;
+}
+
+/* ===== Reduced Motion ===== */
+/* Disable CSS animations when the OS-level reduced-motion preference is active.
+   GSAP animations are handled in JS via the usePrefersReducedMotion hook. */
+
+@media (prefers-reduced-motion: reduce) {
+  .contextual-note--transient {
+    animation: none;
+  }
+
+  /* Disable transition effects on buttons for instant feedback */
+  .top-strip__display-mode button,
+  .n-selector__buttons button,
+  .format-selector button,
+  .grouping-toggle button,
+  .formula-toggle {
+    transition: none;
+  }
+}
+
 /* ===== Main Area ===== */
 
 .main-area {
