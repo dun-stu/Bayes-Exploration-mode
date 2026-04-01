@@ -53,6 +53,10 @@ export function BayesFormulaPanel({ regionA, regionB, scenarioVocabulary }: Baye
       jointProbDAndTestPos,
     } = regionA;
 
+    // Resolve notation symbols from regionB
+    const c = regionB.notationSymbols.condition;
+    const t = regionB.notationSymbols.test;
+
     const jointTP = formatForFormula(jointProbDAndTestPos);
 
     // Tooltip text: use scenario vocabulary for domain-adapted descriptions.
@@ -68,7 +72,7 @@ export function BayesFormulaPanel({ regionA, regionB, scenarioVocabulary }: Baye
       const sens = formatForFormula(inputSensitivity);
       const base = formatForFormula(inputBaseRate);
       return {
-        mainLatex: String.raw`P(D \mid T^+) = \frac{P(T^+ \mid D) \cdot P(D)}{P(T^+)} = {\small\color{#919191}{\frac{${sens} \times ${base}}{0} =}} \;\frac{P(D \cap T^+)}{P(T^+)} = \frac{${jointTP}}{0} \;\text{— undefined}`,
+        mainLatex: String.raw`P(${c} \mid ${t}^+) = \frac{P(${t}^+ \mid ${c}) \cdot P(${c})}{P(${t}^+)} = {\small\color{#919191}{\frac{${sens} \times ${base}}{0} =}} \;\frac{P(${c} \cap ${t}^+)}{P(${t}^+)} = \frac{${jointTP}}{0} \;\text{— undefined}`,
         jointTooltip: jt,
         marginalTooltip: mt,
       };
@@ -80,7 +84,7 @@ export function BayesFormulaPanel({ regionA, regionB, scenarioVocabulary }: Baye
     const post = formatForFormula(posterior);
 
     // Single formula: general form → [grey/small: numerical substitution] → joint/marginal → result
-    const main = String.raw`P(D \mid T^+) = \frac{P(T^+ \mid D) \cdot P(D)}{P(T^+)} = {\small\color{#919191}{\frac{${sens} \times ${base}}{${marginal}} =}} \;\frac{P(D \cap T^+)}{P(T^+)} = \frac{\htmlClass{formula-tooltip-joint}{${jointTP}}}{\htmlClass{formula-tooltip-marginal}{${marginal}}} \approx ${post}`;
+    const main = String.raw`P(${c} \mid ${t}^+) = \frac{P(${t}^+ \mid ${c}) \cdot P(${c})}{P(${t}^+)} = {\small\color{#919191}{\frac{${sens} \times ${base}}{${marginal}} =}} \;\frac{P(${c} \cap ${t}^+)}{P(${t}^+)} = \frac{\htmlClass{formula-tooltip-joint}{${jointTP}}}{\htmlClass{formula-tooltip-marginal}{${marginal}}} \approx ${post}`;
 
     return { mainLatex: main, jointTooltip: jt, marginalTooltip: mt };
   }, [regionA, regionB, scenarioVocabulary]);

@@ -7,7 +7,7 @@
  */
 
 import { DisplayMode } from '../../types';
-import type { ScenarioDefinition, DisplayModeLabels } from '../../types';
+import type { ScenarioDefinition, DisplayModeLabels, NotationSymbols } from '../../types';
 import { SCENARIOS } from '../../data/scenarios';
 import { KaTeXInline } from './KaTeXInline';
 
@@ -20,6 +20,7 @@ interface TopStripProps {
   scenarioId: string | null;
   displayMode: DisplayMode;
   labels: DisplayModeLabels;
+  notationSymbols: NotationSymbols;
   onScenarioChange: (scenario: ScenarioDefinition) => void;
   onDisplayModeChange: (mode: DisplayMode) => void;
   /** Ref for the cross-fade animation target (question + problem statement). */
@@ -30,6 +31,7 @@ export function TopStrip({
   scenarioId,
   displayMode,
   labels,
+  notationSymbols,
   onScenarioChange,
   onDisplayModeChange,
   contentRef,
@@ -89,7 +91,7 @@ export function TopStrip({
           {/* Reserve height for the KaTeX notation line when in frequency mode */}
           {displayMode === DisplayMode.Frequency && (
             <div className="top-strip__question-spacer" aria-hidden="true">
-              <KaTeXInline latex={String.raw`P(D \mid T^+) = \,?`} />
+              <KaTeXInline latex={String.raw`P(${notationSymbols.condition} \mid ${notationSymbols.test}^+) = \,?`} />
             </div>
           )}
         </div>

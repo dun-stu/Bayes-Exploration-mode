@@ -44,6 +44,14 @@ export interface ScenarioDefinition {
   /** e.g. "False rejection rate". Defaults to "False positive rate" if not provided. */
   fprDomainName?: string;
 
+  // ===== Mathematical notation symbols =====
+  // Used in probability-mode LaTeX notation. Defaults: D (condition), T (test).
+
+  /** LaTeX symbol for the condition variable. Defaults to 'D'. E.g. 'S' for spam. */
+  conditionSymbol?: string;
+  /** LaTeX symbol for the test variable. Defaults to 'T'. E.g. 'F' for filter, 'I' for inspection. */
+  testSymbol?: string;
+
   // ===== Domain vocabulary — singular-subject and grammatical forms =====
   // Used in templates where the subject is singular (e.g. probability-mode question).
 

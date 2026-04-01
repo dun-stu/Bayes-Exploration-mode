@@ -17,6 +17,7 @@ export type {
   TreeBranchLabels,
   CrossBranchCombinationLabels,
   DisplayModeLabels,
+  NotationSymbols,
   DataPackageRegionB,
   DataPackageRegionC,
   DataPackage,

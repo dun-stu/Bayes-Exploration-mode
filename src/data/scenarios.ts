@@ -127,6 +127,8 @@ export const SPAM_FILTER: ScenarioDefinition = {
   testPositiveName: 'are flagged',
   testNegativeName: 'reach the inbox',
   sensitivityDomainName: 'Detection rate',
+  conditionSymbol: 'S',
+  testSymbol: 'F',
 
   populationSingular: 'an email',
   conditionNameSingular: 'is spam',
@@ -142,7 +144,7 @@ export const SPAM_FILTER: ScenarioDefinition = {
 };
 
 // ===== Scenario 5: Factory Quality Inspection =====
-// Profile D — Low base rate + decent test → about half of rejections are wrong (PPV ~48.6%)
+// Profile D — Low base rate + decent test → about half of flagged items are actually fine (PPV ~48.6%)
 // The "coin flip" scenario: N_TP ≈ N_FP makes the ~50% PPV geometrically self-evident.
 
 export const FACTORY_INSPECTION: ScenarioDefinition = {
@@ -155,14 +157,15 @@ export const FACTORY_INSPECTION: ScenarioDefinition = {
   conditionName: 'are defective',
   conditionNegativeName: 'are not defective',
   testName: 'the inspection',
-  testPositiveName: 'are rejected',
+  testPositiveName: 'are flagged',
   testNegativeName: 'pass inspection',
   sensitivityDomainName: 'Detection rate',
   fprDomainName: 'False rejection rate',
+  testSymbol: 'I',
 
   populationSingular: 'an item',
   conditionNameSingular: 'is defective',
-  testPositiveNameSingular: 'is rejected',
+  testPositiveNameSingular: 'is flagged',
   relativePronoun: 'that',
   testAction: 'are inspected',
   baseRateDomainName: 'defect rate',
@@ -170,7 +173,7 @@ export const FACTORY_INSPECTION: ScenarioDefinition = {
   id: 'factory_inspection',
   name: 'Factory Quality Inspection',
   domain: 'manufacturing',
-  description: 'Quality inspection — when defects are rare, about half of all rejections are wrong',
+  description: 'Quality inspection — when defects are rare, about half of flagged items are actually fine',
 };
 
 // ===== Scenario 6: Workplace Drug Screening =====

@@ -52,6 +52,10 @@ interface ResolvedVocabulary {
   relativePronoun: string;
   testAction: string;
   baseRateDomainName: string;
+  /** LaTeX symbol for condition variable (e.g. 'D', 'S'). */
+  conditionSymbol: string;
+  /** LaTeX symbol for test variable (e.g. 'T', 'F', 'I'). */
+  testSymbol: string;
 }
 
 function resolveVocabulary(scenario: ScenarioDefinition | null): ResolvedVocabulary {
@@ -60,6 +64,8 @@ function resolveVocabulary(scenario: ScenarioDefinition | null): ResolvedVocabul
       ...DEFAULT_VOCABULARY,
       sensitivityDomainName: 'Sensitivity',
       fprDomainName: 'False positive rate',
+      conditionSymbol: 'D',
+      testSymbol: 'T',
     };
   }
   return {
@@ -77,6 +83,8 @@ function resolveVocabulary(scenario: ScenarioDefinition | null): ResolvedVocabul
     relativePronoun: scenario.relativePronoun,
     testAction: scenario.testAction,
     baseRateDomainName: scenario.baseRateDomainName,
+    conditionSymbol: scenario.conditionSymbol ?? 'D',
+    testSymbol: scenario.testSymbol ?? 'T',
   };
 }
 
@@ -178,7 +186,9 @@ function generateQuestionFrequency(v: ResolvedVocabulary): string {
 
 function generateQuestionProbability(v: ResolvedVocabulary): string {
   const nlQuestion = `What is the probability that ${v.populationSingular} ${v.relativePronoun} ${v.testPositiveNameSingular} ${v.conditionNameSingular}?`;
-  const notation = String.raw`P(D \mid T^+) = \,?`;
+  const c = v.conditionSymbol;
+  const t = v.testSymbol;
+  const notation = String.raw`P(${c} \mid ${t}^+) = \,?`;
   return `${nlQuestion}\n${notation}`;
 }
 
@@ -214,27 +224,29 @@ function generateParamDisplayProbability(a: DataPackageRegionA, v: ResolvedVocab
   const sensDec = formatDecimal(a.inputSensitivity);
   const fprDec = formatDecimal(a.inputFPR);
   const specPct = formatPercentClean(1 - a.inputFPR);
+  const c = v.conditionSymbol;
+  const t = v.testSymbol;
 
   // Extract the short domain term from baseRateDomainName for the parenthetical
   // e.g. "prevalence of the disease" → "prevalence", "spam rate" → "spam rate"
   // For the probability mode, we use a short form for the parenthetical.
   const domainBaseRateTerm = extractShortDomainTerm(v.baseRateDomainName);
 
-  const baseRate = String.raw`P(D) = ${brDec}` + ` — Prior (${domainBaseRateTerm})`;
-  const sensitivity = String.raw`P(T^+ \mid D) = ${sensDec}` + ` — Likelihood (${v.sensitivityDomainName.toLowerCase()})`;
-  const fpr = String.raw`P(T^+ \mid \neg D) = ${fprDec}` + ` — False positive rate (specificity: ${specPct})`;
+  const baseRate = String.raw`P(${c}) = ${brDec}` + ` — Prior (${domainBaseRateTerm})`;
+  const sensitivity = String.raw`P(${t}^+ \mid ${c}) = ${sensDec}` + ` — Likelihood (${v.sensitivityDomainName.toLowerCase()})`;
+  const fpr = String.raw`P(${t}^+ \mid \neg ${c}) = ${fprDec}` + ` — False positive rate (specificity: ${specPct})`;
 
   let totalTestPositiveRate: string;
   let posterior: string;
 
   const ttprDec = formatDecimal(a.totalTestPositiveRate);
-  totalTestPositiveRate = String.raw`P(T^+) \approx ${ttprDec}` + ` — Marginal likelihood`;
+  totalTestPositiveRate = String.raw`P(${t}^+) \approx ${ttprDec}` + ` — Marginal likelihood`;
 
   if (a.posterior !== null) {
     const postDec = formatDecimal(a.posterior);
-    posterior = String.raw`P(D \mid T^+) \approx ${postDec}` + ` — Posterior`;
+    posterior = String.raw`P(${c} \mid ${t}^+) \approx ${postDec}` + ` — Posterior`;
   } else {
-    posterior = String.raw`P(T^+) = 0` + ` \u2014 no positive tests. Posterior is undefined.`;
+    posterior = String.raw`P(${t}^+) = 0` + ` \u2014 no positive tests. Posterior is undefined.`;
   }
 
   return { baseRate, sensitivity, fpr, totalTestPositiveRate, posterior };
@@ -454,18 +466,20 @@ function generateTreeNodeLabelsFrequency(a: DataPackageRegionA): TreeNodeLabels 
   };
 }
 
-function generateTreeNodeLabelsProbability(a: DataPackageRegionA): TreeNodeLabels {
+function generateTreeNodeLabelsProbability(a: DataPackageRegionA, v: ResolvedVocabulary): TreeNodeLabels {
   const brDec = formatDecimal(a.inputBaseRate);
   const notBrDec = formatDecimal(1 - a.inputBaseRate);
+  const c = v.conditionSymbol;
+  const t = v.testSymbol;
 
   return {
     root: '1',
-    conditionPositive: String.raw`P(D) = ${brDec}`,
-    conditionNegative: String.raw`P(\neg D) = ${notBrDec}`,
-    truePositive: String.raw`P(D \cap T^+) = ${formatDecimal(a.jointProbDAndTestPos)}`,
-    falseNegative: String.raw`P(D \cap T^-) = ${formatDecimal(a.jointProbDAndTestNeg)}`,
-    falsePositive: String.raw`P(\neg D \cap T^+) = ${formatDecimal(a.jointProbNotDAndTestPos)}`,
-    trueNegative: String.raw`P(\neg D \cap T^-) = ${formatDecimal(a.jointProbNotDAndTestNeg)}`,
+    conditionPositive: String.raw`P(${c}) = ${brDec}`,
+    conditionNegative: String.raw`P(\neg ${c}) = ${notBrDec}`,
+    truePositive: String.raw`P(${c} \cap ${t}^+) = ${formatDecimal(a.jointProbDAndTestPos)}`,
+    falseNegative: String.raw`P(${c} \cap ${t}^-) = ${formatDecimal(a.jointProbDAndTestNeg)}`,
+    falsePositive: String.raw`P(\neg ${c} \cap ${t}^+) = ${formatDecimal(a.jointProbNotDAndTestPos)}`,
+    trueNegative: String.raw`P(\neg ${c} \cap ${t}^-) = ${formatDecimal(a.jointProbNotDAndTestNeg)}`,
   };
 }
 
@@ -490,7 +504,7 @@ function generateTreeBranchLabelsFrequency(a: DataPackageRegionA, v: ResolvedVoc
   };
 }
 
-function generateTreeBranchLabelsProbability(a: DataPackageRegionA): TreeBranchLabels {
+function generateTreeBranchLabelsProbability(a: DataPackageRegionA, v: ResolvedVocabulary): TreeBranchLabels {
   // Probability mode uses INPUT rates as decimals (the formal conditional probabilities)
   const brDec = formatDecimal(a.inputBaseRate);
   const notBrDec = formatDecimal(1 - a.inputBaseRate);
@@ -498,14 +512,16 @@ function generateTreeBranchLabelsProbability(a: DataPackageRegionA): TreeBranchL
   const fnrDec = formatDecimal(1 - a.inputSensitivity);
   const fprDec = formatDecimal(a.inputFPR);
   const tnrDec = formatDecimal(1 - a.inputFPR);
+  const c = v.conditionSymbol;
+  const t = v.testSymbol;
 
   return {
-    baseRatePositive: String.raw`P(D) = ${brDec}`,
-    baseRateNegative: String.raw`P(\neg D) = ${notBrDec}`,
-    sensitivity: String.raw`P(T^+ \mid D) = ${sensDec}`,
-    falseNegativeRate: String.raw`P(T^- \mid D) = ${fnrDec}`,
-    falsePositiveRate: String.raw`P(T^+ \mid \neg D) = ${fprDec}`,
-    trueNegativeRate: String.raw`P(T^- \mid \neg D) = ${tnrDec}`,
+    baseRatePositive: String.raw`P(${c}) = ${brDec}`,
+    baseRateNegative: String.raw`P(\neg ${c}) = ${notBrDec}`,
+    sensitivity: String.raw`P(${t}^+ \mid ${c}) = ${sensDec}`,
+    falseNegativeRate: String.raw`P(${t}^- \mid ${c}) = ${fnrDec}`,
+    falsePositiveRate: String.raw`P(${t}^+ \mid \neg ${c}) = ${fprDec}`,
+    trueNegativeRate: String.raw`P(${t}^- \mid \neg ${c}) = ${tnrDec}`,
   };
 }
 
@@ -526,11 +542,14 @@ function generateCrossBranchFrequency(a: DataPackageRegionA, v: ResolvedVocabula
   return { sumLabel, posteriorLabel };
 }
 
-function generateCrossBranchProbability(a: DataPackageRegionA): CrossBranchCombinationLabels {
+function generateCrossBranchProbability(a: DataPackageRegionA, v: ResolvedVocabulary): CrossBranchCombinationLabels {
+  const c = v.conditionSymbol;
+  const t = v.testSymbol;
+
   if (a.posterior === null) {
     return {
-      sumLabel: String.raw`P(T^+) = 0`,
-      posteriorLabel: String.raw`P(D \mid T^+) is undefined.`,
+      sumLabel: String.raw`P(${t}^+) = 0`,
+      posteriorLabel: String.raw`P(${c} \mid ${t}^+) is undefined.`,
     };
   }
 
@@ -539,8 +558,8 @@ function generateCrossBranchProbability(a: DataPackageRegionA): CrossBranchCombi
   const marginal = formatDecimal(a.totalTestPositiveRate);
   const postDec = formatDecimal(a.posterior);
 
-  const sumLabel = String.raw`P(T^+) = P(D \cap T^+) + P(\neg D \cap T^+) = ${jointTP} + ${jointFP} = ${marginal}`;
-  const posteriorLabel = String.raw`P(D \mid T^+) = \tfrac{P(D \cap T^+)}{P(T^+)} = \tfrac{${jointTP}}{${marginal}} \approx ${postDec}`;
+  const sumLabel = String.raw`P(${t}^+) = P(${c} \cap ${t}^+) + P(\neg ${c} \cap ${t}^+) = ${jointTP} + ${jointFP} = ${marginal}`;
+  const posteriorLabel = String.raw`P(${c} \mid ${t}^+) = \tfrac{P(${c} \cap ${t}^+)}{P(${t}^+)} = \tfrac{${jointTP}}{${marginal}} \approx ${postDec}`;
 
   return { sumLabel, posteriorLabel };
 }
@@ -555,9 +574,10 @@ export interface DegenerateMessages {
 }
 
 function generateDegenerateMessages(a: DataPackageRegionA, v: ResolvedVocabulary): DegenerateMessages {
+  const t = v.testSymbol;
   return {
     nTestPosZeroFrequency: `No ${v.populationName} ${v.testPositiveName} with these parameters — the posterior is undefined.`,
-    nTestPosZeroProbability: String.raw`P(T^+) = 0` + ` \u2014 no positive tests. Posterior is undefined.`,
+    nTestPosZeroProbability: String.raw`P(${t}^+) = 0` + ` \u2014 no positive tests. Posterior is undefined.`,
     zeroFromRounding: `At this population size, the ${v.sensitivityDomainName.toLowerCase()} doesn't produce any detected cases. Try a larger population for more detail.`,
     smallND: 'The affected group is very small at this population size — try a larger N for more detail.',
   };
@@ -672,9 +692,9 @@ export function computeRegionB(
   const probability: DisplayModeLabels = {
     byCondition: generateByConditionLabelsProbability(regionA, v),
     byTestResult: generateByTestResultLabelsProbability(regionA, v),
-    treeNodes: generateTreeNodeLabelsProbability(regionA),
-    treeBranches: generateTreeBranchLabelsProbability(regionA),
-    crossBranchCombination: generateCrossBranchProbability(regionA),
+    treeNodes: generateTreeNodeLabelsProbability(regionA, v),
+    treeBranches: generateTreeBranchLabelsProbability(regionA, v),
+    crossBranchCombination: generateCrossBranchProbability(regionA, v),
     questionText: generateQuestionProbability(v),
     problemStatementText: generateProblemStatementProbability(regionA, v),
     parameterDisplayStrings: generateParamDisplayProbability(regionA, v),
@@ -684,6 +704,10 @@ export function computeRegionB(
     frequency,
     probability,
     activeDisplayMode,
+    notationSymbols: {
+      condition: v.conditionSymbol,
+      test: v.testSymbol,
+    },
   };
 }
 

@@ -137,6 +137,7 @@ export function ExplorationMode() {
         scenarioId={parameters.scenarioId}
         displayMode={parameters.displayMode}
         labels={activeLabels}
+        notationSymbols={dataPackage.regionB.notationSymbols}
         onScenarioChange={handleScenarioChange}
         onDisplayModeChange={handleDisplayModeChange}
         contentRef={topStripContentRef}

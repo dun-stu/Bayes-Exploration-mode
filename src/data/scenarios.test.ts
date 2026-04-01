@@ -231,4 +231,30 @@ describe('Domain-specific optional fields', () => {
     expect(COVID_ANTIGEN.sensitivityDomainName).toBeUndefined();
     expect(DRUG_SCREENING.sensitivityDomainName).toBeUndefined();
   });
+
+  it('factory inspection uses "are flagged" vocabulary', () => {
+    expect(FACTORY_INSPECTION.testPositiveName).toBe('are flagged');
+    expect(FACTORY_INSPECTION.testPositiveNameSingular).toBe('is flagged');
+  });
+
+  it('spam filter uses S/F notation symbols', () => {
+    expect(SPAM_FILTER.conditionSymbol).toBe('S');
+    expect(SPAM_FILTER.testSymbol).toBe('F');
+  });
+
+  it('factory inspection uses I for test symbol', () => {
+    expect(FACTORY_INSPECTION.testSymbol).toBe('I');
+    expect(FACTORY_INSPECTION.conditionSymbol).toBeUndefined(); // defaults to D
+  });
+
+  it('medical scenarios have no notation symbol overrides', () => {
+    expect(MAMMOGRAPHY.conditionSymbol).toBeUndefined();
+    expect(MAMMOGRAPHY.testSymbol).toBeUndefined();
+    expect(COVID_ANTIGEN.conditionSymbol).toBeUndefined();
+    expect(COVID_ANTIGEN.testSymbol).toBeUndefined();
+    expect(BLOOD_DONATION.conditionSymbol).toBeUndefined();
+    expect(BLOOD_DONATION.testSymbol).toBeUndefined();
+    expect(DRUG_SCREENING.conditionSymbol).toBeUndefined();
+    expect(DRUG_SCREENING.testSymbol).toBeUndefined();
+  });
 });

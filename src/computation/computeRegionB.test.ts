@@ -66,6 +66,8 @@ const spamVocabulary: ScenarioDefinition = {
   testNegativeName: 'reach the inbox',
   sensitivityDomainName: 'Detection rate',
   fprDomainName: 'False positive rate',
+  conditionSymbol: 'S',
+  testSymbol: 'F',
   populationSingular: 'an email',
   conditionNameSingular: 'is spam',
   testPositiveNameSingular: 'is flagged',
@@ -526,6 +528,74 @@ describe('LaTeX well-formedness', () => {
     const q = regionB.probability.questionText;
     expect(q).toContain('\\mid');
     expect(q).toContain('T^+');
+  });
+});
+
+// ===== Scenario-Adapted Notation Symbols =====
+
+describe('Scenario-adapted notation symbols', () => {
+  it('mammography uses default D/T symbols', () => {
+    const regionB = computeRegionB(mammoRegionA, mammoVocabulary);
+    expect(regionB.notationSymbols).toEqual({ condition: 'D', test: 'T' });
+    // Spot-check probability labels
+    expect(regionB.probability.treeNodes.conditionPositive).toContain('P(D)');
+    expect(regionB.probability.treeBranches.sensitivity).toContain('P(T^+');
+    expect(regionB.probability.crossBranchCombination.posteriorLabel).toContain('P(D \\mid T^+)');
+    expect(regionB.probability.questionText).toContain('P(D \\mid T^+)');
+  });
+
+  it('spam scenario uses S/F symbols throughout probability mode', () => {
+    const regionB = computeRegionB(spamRegionA, spamVocabulary);
+    expect(regionB.notationSymbols).toEqual({ condition: 'S', test: 'F' });
+
+    // Question text
+    expect(regionB.probability.questionText).toContain('P(S \\mid F^+)');
+
+    // Parameter display
+    const params = regionB.probability.parameterDisplayStrings;
+    expect(params.baseRate).toContain('P(S)');
+    expect(params.sensitivity).toContain('P(F^+ \\mid S)');
+    expect(params.fpr).toContain('P(F^+ \\mid \\neg S)');
+    expect(params.totalTestPositiveRate).toContain('P(F^+)');
+    expect(params.posterior).toContain('P(S \\mid F^+)');
+
+    // Tree node labels (joint probabilities)
+    const nodes = regionB.probability.treeNodes;
+    expect(nodes.conditionPositive).toContain('P(S)');
+    expect(nodes.conditionNegative).toContain('P(\\neg S)');
+    expect(nodes.truePositive).toContain('P(S \\cap F^+)');
+    expect(nodes.falsePositive).toContain('P(\\neg S \\cap F^+)');
+
+    // Tree branch labels
+    const br = regionB.probability.treeBranches;
+    expect(br.baseRatePositive).toContain('P(S)');
+    expect(br.sensitivity).toContain('P(F^+ \\mid S)');
+    expect(br.falsePositiveRate).toContain('P(F^+ \\mid \\neg S)');
+
+    // Cross-branch combination
+    const cbc = regionB.probability.crossBranchCombination;
+    expect(cbc.sumLabel).toContain('P(F^+)');
+    expect(cbc.sumLabel).toContain('P(S \\cap F^+)');
+    expect(cbc.posteriorLabel).toContain('P(S \\mid F^+)');
+  });
+
+  it('spam scenario does NOT change frequency-mode labels', () => {
+    const regionB = computeRegionB(spamRegionA, spamVocabulary);
+    // Frequency mode should have no LaTeX notation — domain vocabulary only
+    expect(regionB.frequency.questionText).not.toContain('P(S');
+    expect(regionB.frequency.questionText).toContain('are flagged');
+  });
+
+  it('null scenario defaults to D/T', () => {
+    const regionB = computeRegionB(mammoRegionA, null);
+    expect(regionB.notationSymbols).toEqual({ condition: 'D', test: 'T' });
+    expect(regionB.probability.treeNodes.conditionPositive).toContain('P(D)');
+  });
+
+  it('degenerate messages use scenario test symbol', () => {
+    const spamV = resolveVocabulary(spamVocabulary);
+    const msgs = generateDegenerateMessages(spamRegionA, spamV);
+    expect(msgs.nTestPosZeroProbability).toContain('P(F^+)');
   });
 });
 

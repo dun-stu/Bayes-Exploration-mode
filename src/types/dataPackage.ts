@@ -147,10 +147,20 @@ export interface DisplayModeLabels {
   };
 }
 
+/** Resolved mathematical notation symbols for probability-mode LaTeX. */
+export interface NotationSymbols {
+  /** Condition variable symbol, e.g. 'D', 'S'. */
+  condition: string;
+  /** Test variable symbol, e.g. 'T', 'F', 'I'. */
+  test: string;
+}
+
 export interface DataPackageRegionB {
   frequency: DisplayModeLabels;
   probability: DisplayModeLabels;
   activeDisplayMode: DisplayMode;
+  /** Resolved notation symbols for this scenario (defaults applied). */
+  notationSymbols: NotationSymbols;
 }
 
 // ===== REGION C — Metadata =====
