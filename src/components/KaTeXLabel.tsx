@@ -61,7 +61,6 @@ export function KaTeXLabel({
   return (
     <foreignObject x={x} y={y} width={width} height={height} className={className}>
       <div
-        xmlns="http://www.w3.org/1999/xhtml"
         style={{ fontSize: `${fontSize}px`, color, lineHeight: 1.2, textAlign }}
         dangerouslySetInnerHTML={{ __html: html }}
       />

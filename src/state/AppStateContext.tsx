@@ -8,7 +8,6 @@
  */
 
 import { createContext, useContext, useReducer, useMemo, type ReactNode } from 'react';
-import { DisplayMode } from '../types';
 import type { DataPackage } from '../types';
 import {
   type ParameterState,

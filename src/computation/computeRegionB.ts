@@ -28,7 +28,6 @@ import type {
   TreeNodeLabels,
   TreeBranchLabels,
   CrossBranchCombinationLabels,
-  GroupLabel,
 } from '../types';
 import { DisplayMode } from '../types';
 import type { ScenarioDefinition } from '../types';
@@ -573,7 +572,7 @@ export interface DegenerateMessages {
   smallND: string;
 }
 
-function generateDegenerateMessages(a: DataPackageRegionA, v: ResolvedVocabulary): DegenerateMessages {
+function generateDegenerateMessages(_a: DataPackageRegionA, v: ResolvedVocabulary): DegenerateMessages {
   const t = v.testSymbol;
   return {
     nTestPosZeroFrequency: `No ${v.populationName} ${v.testPositiveName} with these parameters — the posterior is undefined.`,

@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { computeRegionA, type ComputationInputs } from './computeRegionA';
+import { computeRegionA } from './computeRegionA';
 import type { DataPackageRegionA } from '../types';
 
 // ===== Helpers =====

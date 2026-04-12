@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { generateTooltipDescriptions, buildCompositionTooltip, type GroupTooltipDescriptions } from './IconArray';
+import { generateTooltipDescriptions, buildCompositionTooltip } from './IconArray';
 import { MAMMOGRAPHY, SPAM_FILTER, FACTORY_INSPECTION } from '../../data/scenarios';
 
 describe('generateTooltipDescriptions', () => {

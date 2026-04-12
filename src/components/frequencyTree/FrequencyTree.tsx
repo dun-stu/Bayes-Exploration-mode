@@ -402,7 +402,6 @@ function TreeNode({ node, nodeId, label, fontSize, radius, isLatexMode }: TreeNo
       {useKatex ? (
         <foreignObject x={x} y={y} width={node.width} height={node.height}>
           <div
-            xmlns="http://www.w3.org/1999/xhtml"
             style={{
               width: '100%',
               height: '100%',
@@ -500,8 +499,6 @@ interface CombinationBracketProps {
 
 function CombinationBracket({ layout, combinationLabels, isLatexMode }: CombinationBracketProps) {
   const { bracket, bracketFontSize, scale } = layout;
-  const armHeight = bracket.bottomY - bracket.topY;
-
   // Draw the bracket as a path: left arm down, horizontal across, right arm up.
   const bracketPath = [
     `M ${bracket.leftX} ${bracket.topY}`,
